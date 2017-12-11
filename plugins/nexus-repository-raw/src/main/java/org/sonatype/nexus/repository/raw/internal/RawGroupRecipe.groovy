@@ -12,6 +12,8 @@
  */
 package org.sonatype.nexus.repository.raw.internal
 
+import org.sonatype.nexus.repository.sizeblobcount.RepositoryAttributesFacet
+
 import javax.annotation.Nonnull
 import javax.inject.Inject
 import javax.inject.Named
@@ -66,6 +68,9 @@ class RawGroupRecipe
   Provider<GroupFacet> groupFacet
 
   @Inject
+  Provider<RepositoryAttributesFacet> repositoryAttributesFacet
+
+  @Inject
   ExceptionHandler exceptionHandler
 
   @Inject
@@ -94,6 +99,7 @@ class RawGroupRecipe
     repository.attach(attributesFacet.get())
     repository.attach(configure(viewFacet.get()))
     repository.attach(groupFacet.get())
+    repository.attach(repositoryAttributesFacet.get())
   }
 
   /**

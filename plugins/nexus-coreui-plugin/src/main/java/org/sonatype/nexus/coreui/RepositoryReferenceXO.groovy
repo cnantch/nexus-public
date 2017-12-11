@@ -13,6 +13,7 @@
 package org.sonatype.nexus.coreui
 
 import groovy.transform.ToString
+import org.hibernate.validator.constraints.Range
 
 
 /**
@@ -28,6 +29,9 @@ class RepositoryReferenceXO
   String format
   String url
   RepositoryStatusXO status
+  long blobCount
+  long size
+
   /**
    * sortOrder will override the typical alphanumeric ordering in the UI, so the higher your sortOrder, the closer to
    * the top you will get

@@ -369,6 +369,8 @@ Ext.define('NX.coreui.app.PluginStrings', {
     Repository_Facet_HttpClientFacet_AuthenticationType_NTLM: 'Windows NTLM',
     Repository_Facet_HttpClientFacet_Authentication_Title: 'Authentication',
     Repository_Facet_HttpClientFacet_HTTP_Title: 'HTTP request settings',
+    Repository_RepositoryList_Size_Header: 'Size',
+    Repository_RepositoryList_BlobCount_Header: 'Blob count',
 
     HealthCheckRepositoryColumn_Header: 'Health check',
     HealthCheckRepositoryColumn_Analyzing: 'Analyzing&hellip;',

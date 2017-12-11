@@ -12,12 +12,6 @@
  */
 package org.sonatype.nexus.repository.maven.internal.recipes
 
-import javax.annotation.Nonnull
-import javax.inject.Inject
-import javax.inject.Named
-import javax.inject.Provider
-import javax.inject.Singleton
-
 import org.sonatype.nexus.repository.Format
 import org.sonatype.nexus.repository.Repository
 import org.sonatype.nexus.repository.Type
@@ -27,16 +21,19 @@ import org.sonatype.nexus.repository.maven.RemoveSnapshotsFacet
 import org.sonatype.nexus.repository.maven.internal.Maven2Format
 import org.sonatype.nexus.repository.maven.internal.MavenSecurityFacet
 import org.sonatype.nexus.repository.maven.internal.VersionPolicyHandler
-import org.sonatype.nexus.repository.maven.internal.hosted.ArchetypeCatalogHandler
-import org.sonatype.nexus.repository.maven.internal.hosted.HostedHandler
-import org.sonatype.nexus.repository.maven.internal.hosted.MavenHostedComponentMaintenanceFacet
-import org.sonatype.nexus.repository.maven.internal.hosted.MavenHostedFacetImpl
-import org.sonatype.nexus.repository.maven.internal.hosted.MavenHostedIndexFacet
+import org.sonatype.nexus.repository.maven.internal.hosted.*
 import org.sonatype.nexus.repository.search.SearchFacet
+import org.sonatype.nexus.repository.sizeblobcount.RepositoryAttributesFacet
 import org.sonatype.nexus.repository.types.HostedType
 import org.sonatype.nexus.repository.view.ConfigurableViewFacet
 import org.sonatype.nexus.repository.view.Router
 import org.sonatype.nexus.repository.view.ViewFacet
+
+import javax.annotation.Nonnull
+import javax.inject.Inject
+import javax.inject.Named
+import javax.inject.Provider
+import javax.inject.Singleton
 
 import static org.sonatype.nexus.repository.http.HttpHandlers.notFound
 
@@ -101,6 +98,7 @@ class Maven2HostedRecipe
     repository.attach(mavenPurgeSnapshotsFacet.get())
     repository.attach(removeSnapshotsFacet.get())
     repository.attach(configure(viewFacet.get()))
+    repository.attach(repositoryAttributesfacet.get())
   }
 
   private ViewFacet configure(final ConfigurableViewFacet facet) {

@@ -26,6 +26,8 @@ Ext.define('NX.coreui.model.RepositoryReference', {
     {name: 'format', type: 'string', sortType: 'asUCText'},
     {name: 'status', type: 'auto' /*object*/},
     {name: 'url', type: 'string', sortType: 'asUCText'},
+    {name: 'blobCount', type: 'int'},
+    {name: 'size', type: 'int'},
     {name: 'sortOrder', sortType: 'asInt'}
   ]
 });

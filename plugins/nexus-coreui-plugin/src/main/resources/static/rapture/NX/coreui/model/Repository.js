@@ -28,6 +28,8 @@ Ext.define('NX.coreui.model.Repository', {
     {name: 'online', type: 'boolean'},
     {name: 'status', type: 'auto' /*object*/},
     {name: 'attributes', type: 'auto' /*object*/},
-    {name: 'url', type: 'string', sortType: 'asUCText'}
+    {name: 'url', type: 'string', sortType: 'asUCText'},
+    {name: 'blobCount', type: 'int'},
+    {name: 'size', type: 'int'}
   ]
 });

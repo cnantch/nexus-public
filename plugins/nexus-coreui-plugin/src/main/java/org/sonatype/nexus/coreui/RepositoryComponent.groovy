@@ -12,17 +12,15 @@
  */
 package org.sonatype.nexus.coreui
 
-import java.util.stream.Collectors
-import java.util.stream.StreamSupport
-
-import javax.annotation.Nullable
-import javax.inject.Inject
-import javax.inject.Named
-import javax.inject.Singleton
-import javax.validation.Valid
-import javax.validation.constraints.NotNull
-import javax.validation.groups.Default
-
+import com.codahale.metrics.annotation.ExceptionMetered
+import com.codahale.metrics.annotation.Timed
+import com.google.common.collect.ImmutableList
+import com.softwarementors.extjs.djn.config.annotations.DirectAction
+import com.softwarementors.extjs.djn.config.annotations.DirectMethod
+import com.softwarementors.extjs.djn.config.annotations.DirectPollMethod
+import groovy.transform.PackageScope
+import org.apache.shiro.authz.annotation.RequiresAuthentication
+import org.hibernate.validator.constraints.NotEmpty
 import org.sonatype.nexus.common.app.BaseUrlHolder
 import org.sonatype.nexus.common.app.GlobalComponentLookupHelper
 import org.sonatype.nexus.coreui.internal.search.BrowseableFormatXO
@@ -35,6 +33,7 @@ import org.sonatype.nexus.repository.Format
 import org.sonatype.nexus.repository.MissingFacetException
 import org.sonatype.nexus.repository.Recipe
 import org.sonatype.nexus.repository.Repository
+import org.sonatype.nexus.repository.attributes.AttributesFacet
 import org.sonatype.nexus.repository.cache.RepositoryCacheUtils
 import org.sonatype.nexus.repository.config.Configuration
 import org.sonatype.nexus.repository.httpclient.HttpClientFacet
@@ -45,6 +44,7 @@ import org.sonatype.nexus.repository.security.RepositoryAdminPermission
 import org.sonatype.nexus.repository.security.RepositoryContentSelectorPermission
 import org.sonatype.nexus.repository.security.RepositorySelector
 import org.sonatype.nexus.repository.security.RepositoryViewPermission
+import org.sonatype.nexus.repository.sizeblobcount.RepositoryAttributesFacet
 import org.sonatype.nexus.repository.types.ProxyType
 import org.sonatype.nexus.scheduling.TaskConfiguration
 import org.sonatype.nexus.scheduling.TaskInfo
@@ -57,15 +57,15 @@ import org.sonatype.nexus.validation.Validate
 import org.sonatype.nexus.validation.group.Create
 import org.sonatype.nexus.validation.group.Update
 
-import com.codahale.metrics.annotation.ExceptionMetered
-import com.codahale.metrics.annotation.Timed
-import com.google.common.collect.ImmutableList
-import com.softwarementors.extjs.djn.config.annotations.DirectAction
-import com.softwarementors.extjs.djn.config.annotations.DirectMethod
-import com.softwarementors.extjs.djn.config.annotations.DirectPollMethod
-import groovy.transform.PackageScope
-import org.apache.shiro.authz.annotation.RequiresAuthentication
-import org.hibernate.validator.constraints.NotEmpty
+import javax.annotation.Nullable
+import javax.inject.Inject
+import javax.inject.Named
+import javax.inject.Singleton
+import javax.validation.Valid
+import javax.validation.constraints.NotNull
+import javax.validation.groups.Default
+import java.util.stream.Collectors
+import java.util.stream.StreamSupport
 
 /**
  * Repository {@link DirectComponent}.
@@ -158,7 +158,9 @@ class RepositoryComponent
           type: repository.type.toString(),
           format: repository.format.toString(),
           status: buildStatus(repository),
-          url: "${BaseUrlHolder.get()}/repository/${repository.name}/" // trailing slash is important
+              size: repository.facet(RepositoryAttributesFacet.class).size(),
+              blobCount: repository.facet(RepositoryAttributesFacet.class).blobCount(),
+          url: "${BaseUrlHolder.get()}/repository/${repository.name}/"// trailing slash is important,
       )
     }
   }
@@ -273,6 +275,8 @@ class RepositoryComponent
   }
 
   RepositoryXO asRepository(Repository input) {
+
+
     return new RepositoryXO(
         name: input.name,
         type: input.type,
@@ -280,6 +284,8 @@ class RepositoryComponent
         online: input.configuration.online,
         recipe: input.configuration.recipeName,
         status: buildStatus(input),
+            size: input.facet(RepositoryAttributesFacet.class).size(),
+            blobCount: input.facet(RepositoryAttributesFacet.class).blobCount(),
         attributes: filterAttributes(input.configuration.copy().attributes),
         url: "${BaseUrlHolder.get()}/repository/${input.name}/" // trailing slash is important
     )

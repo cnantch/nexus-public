@@ -13,6 +13,7 @@
 package org.sonatype.nexus.repository.maven.internal.recipes
 
 import org.sonatype.nexus.repository.attributes.AttributesFacet
+import org.sonatype.nexus.repository.sizeblobcount.RepositoryAttributesFacet
 
 import javax.inject.Inject
 import javax.inject.Provider
@@ -89,6 +90,9 @@ abstract class MavenRecipeSupport
   final MavenPathParser mavenPathParser
 
   final Provider<SecurityFacet> securityFacet
+
+  @Inject
+  Provider<RepositoryAttributesFacet> repositoryAttributesfacet
 
   MavenRecipeSupport(Type type, Format format, MavenPathParser mavenPathParser, Provider<SecurityFacet> securityFacet) {
     super(type, format)

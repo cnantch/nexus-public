@@ -12,6 +12,8 @@
  */
 package org.sonatype.nexus.repository.raw.internal
 
+import org.sonatype.nexus.repository.sizeblobcount.RepositoryAttributesFacet
+
 import javax.annotation.Nonnull
 import javax.inject.Inject
 import javax.inject.Named
@@ -91,6 +93,9 @@ class RawProxyRecipe
   Provider<SearchFacet> searchFacet
 
   @Inject
+  Provider<RepositoryAttributesFacet> repositoryAttributesFacet
+
+  @Inject
   Provider<PurgeUnusedFacet> purgeUnusedFacet
 
   @Inject
@@ -143,6 +148,7 @@ class RawProxyRecipe
     repository.attach(componentMaintenance.get())
     repository.attach(searchFacet.get())
     repository.attach(purgeUnusedFacet.get())
+    repository.attach(repositoryAttributesFacet.get())
   }
 
   /**
