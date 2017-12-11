@@ -3,10 +3,9 @@ package org.sonatype.nexus.repository.sizeblobcount;
 import com.google.common.base.Supplier;
 import com.google.common.collect.Lists;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import org.fest.assertions.api.Assertions;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Matchers;
 import org.mockito.Mock;
 import org.sonatype.goodies.testsupport.TestSupport;
 import org.sonatype.nexus.blobstore.api.BlobRef;
@@ -14,19 +13,15 @@ import org.sonatype.nexus.repository.Repository;
 import org.sonatype.nexus.repository.config.Configuration;
 import org.sonatype.nexus.repository.group.GroupFacet;
 import org.sonatype.nexus.repository.manager.RepositoryManager;
-import org.sonatype.nexus.repository.storage.Asset;
-import org.sonatype.nexus.repository.storage.Bucket;
-import org.sonatype.nexus.repository.storage.StorageFacet;
-import org.sonatype.nexus.repository.storage.StorageTx;
+import org.sonatype.nexus.repository.storage.*;
 import org.sonatype.nexus.repository.types.GroupType;
-import org.sonatype.nexus.transaction.UnitOfWork;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
 import static com.google.common.collect.ImmutableList.copyOf;
-import static org.fest.assertions.api.Assertions.*;
+import static org.fest.assertions.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -124,6 +119,8 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
         when(tx.findBucket(repository)).thenReturn(bucket);
         when(tx.browseAssets(bucket)).thenReturn(Lists.newArrayList(assets));
 
+        when(tx.countAssets(Matchers.any(Query.class), Matchers.any(Iterable.class))).thenReturn(2L);
+
 
 
         return repository;
@@ -177,6 +174,7 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
          * Appel de la méthode de comptage de la taille et du blob count
          */
         RepositoryAttributesFacet repositoryAttributesFacet = new RepositoryAttributesFacetImpl();
+        repositoryAttributesFacet.attach(repository);
 
         //Then
         /**
@@ -199,6 +197,7 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
          * Appel de la méthode de comptage de la taille et du blob count
          */
         RepositoryAttributesFacet repositoryAttributesFacet = new RepositoryAttributesFacetImpl();
+        repositoryAttributesFacet.attach(repository);
 
         //Then
         /**
@@ -224,6 +223,7 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
          * Appel de la méthode de comptage de la taille et du blob count
          */
         RepositoryAttributesFacet repositoryAttributesFacet = new RepositoryAttributesFacetImpl();
+        repositoryAttributesFacet.attach(repository);
 
         //Then
         /**
@@ -234,7 +234,7 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
     }
 
     @Test
-    public void TODO_RENAME_GROUP() throws Exception {
+    public void should_return_the_repository_attributes_of_a_group_repository() throws Exception {
         //Given
         Asset asset1 = mockAsset("org.edf.test:1.0", 1500);
         Asset asset2 = mockAsset("org.edf.openam:1.0", 2500);
@@ -242,10 +242,9 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
         Asset asset3 = mockAsset("org.edf.test:2.0", 15000);
         Asset asset4 = mockAsset("org.edf.openam:2.0", 2500);
         Repository repository2 = initRepositoryWithAssets(asset3, asset4);
-        Repository groupReposiory = groupRepository("MY-REMO-MAVEN-GROUP", repository, repository2);
+        Repository groupRepository = groupRepository("MY-REMO-MAVEN-GROUP", repository, repository2);
         Bucket groupBucket = mock(Bucket.class);
-        when(tx.findBucket(groupReposiory)).thenReturn(groupBucket);
-        when(tx.browseAssets(groupBucket)).thenReturn(Lists.newArrayList(asset1, asset2, asset3, asset4));
+        when(tx.findBucket(groupRepository)).thenReturn(groupBucket);
 
 
         //When
@@ -253,12 +252,13 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
          * Appel de la méthode de comptage de la taille et du blob count
          */
         RepositoryAttributesFacet repositoryAttributesFacet = new RepositoryAttributesFacetImpl();
+        repositoryAttributesFacet.attach(groupRepository);
 
         //Then
         /**
-         * Return the size and the blob count of the two assets
+         * Return the size and the blob count of the group repository
          */
-        assertThat(21500L).isEqualTo(repositoryAttributesFacet.size());
-        assertThat(4L).isEqualTo(repositoryAttributesFacet.blobCount());
+        assertThat(0L).isEqualTo(repositoryAttributesFacet.size());
+        assertThat(0L).isEqualTo(repositoryAttributesFacet.blobCount());
     }
 }

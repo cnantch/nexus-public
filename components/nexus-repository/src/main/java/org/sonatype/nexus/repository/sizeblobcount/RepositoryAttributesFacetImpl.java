@@ -37,26 +37,27 @@ public class RepositoryAttributesFacetImpl extends FacetSupport implements Repos
 
     private SizeBlobCount getSizeAndBlobCount() {
         logger.trace("Repository name {} ", getRepository().getName());
-        return TransactionalStoreMetadata.operation.withDb(facet(StorageFacet.class).txSupplier()).call(() -> {
-            final StorageTx storageTx = UnitOfWork.currentTx();
+        if (optionalFacet(StorageFacet.class).isPresent()) {
+            return TransactionalStoreMetadata.operation.withDb(facet(StorageFacet.class).txSupplier()).call(() -> {
+                final StorageTx storageTx = UnitOfWork.currentTx();
 
-            //First Get the bucket
-            Bucket bucket = storageTx.findBucket(getRepository());
+                //First Get the bucket
+                Bucket bucket = storageTx.findBucket(getRepository());
 
-            //Assets of the bucket
-            Iterable<Asset> assets = storageTx.browseAssets(bucket);
-
-
-            final long blobCount = storageTx.countAssets(Query.builder().where("1").eq(1).build(), Arrays.asList(getRepository()));
+                //Assets of the bucket
+                Iterable<Asset> assets = storageTx.browseAssets(bucket);
 
 
-            if (assets != null) {
-                return new SizeBlobCount(Streams.stream(assets).mapToLong(value -> value.size()).sum(),
-                        blobCount);
-            }
+                if (assets != null) {
+                    long blobCount = storageTx.countAssets(Query.builder().where("1").eq(1).build(), Arrays.asList(getRepository()));
+                    return new SizeBlobCount(Streams.stream(assets).mapToLong(value -> value.size()).sum(),
+                            blobCount);
+                }
 
-            return new SizeBlobCount(0,0);
+                return new SizeBlobCount(0,0);
 
-        });
-    }
+            });
+        }
+        return new SizeBlobCount(0,0);
+    }git statu
 }
