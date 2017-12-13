@@ -33,7 +33,6 @@ import org.sonatype.nexus.repository.Format
 import org.sonatype.nexus.repository.MissingFacetException
 import org.sonatype.nexus.repository.Recipe
 import org.sonatype.nexus.repository.Repository
-import org.sonatype.nexus.repository.attributes.AttributesFacet
 import org.sonatype.nexus.repository.cache.RepositoryCacheUtils
 import org.sonatype.nexus.repository.config.Configuration
 import org.sonatype.nexus.repository.httpclient.HttpClientFacet
@@ -152,14 +151,15 @@ class RepositoryComponent
   @ExceptionMetered
   List<RepositoryReferenceXO> readReferences(final @Nullable StoreLoadParameters parameters) {
     return filter(parameters).collect { Repository repository ->
+      def repositoryAttributesFacet = repository.facet(RepositoryAttributesFacet.class)
       new RepositoryReferenceXO(
           id: repository.name,
           name: repository.name,
           type: repository.type.toString(),
           format: repository.format.toString(),
           status: buildStatus(repository),
-              size: repository.facet(RepositoryAttributesFacet.class).size(),
-              blobCount: repository.facet(RepositoryAttributesFacet.class).blobCount(),
+              size: repositoryAttributesFacet.size(),
+              blobCount: repositoryAttributesFacet.blobCount(),
           url: "${BaseUrlHolder.get()}/repository/${repository.name}/"// trailing slash is important,
       )
     }
@@ -277,6 +277,7 @@ class RepositoryComponent
   RepositoryXO asRepository(Repository input) {
 
 
+    def repositoryAttributesFacet = input.facet(RepositoryAttributesFacet.class)
     return new RepositoryXO(
         name: input.name,
         type: input.type,
@@ -284,8 +285,8 @@ class RepositoryComponent
         online: input.configuration.online,
         recipe: input.configuration.recipeName,
         status: buildStatus(input),
-            size: input.facet(RepositoryAttributesFacet.class).size(),
-            blobCount: input.facet(RepositoryAttributesFacet.class).blobCount(),
+            size: repositoryAttributesFacet.size(),
+            blobCount: repositoryAttributesFacet.blobCount(),
         attributes: filterAttributes(input.configuration.copy().attributes),
         url: "${BaseUrlHolder.get()}/repository/${input.name}/" // trailing slash is important
     )

@@ -90,7 +90,6 @@ Ext.define('NX.coreui.view.repository.RepositorySettingsForm', {
             helpText: NX.I18n.get('Repository_RepositorySettingsForm_Type_HelpText'),
             readOnly: true
           },
-
           {
             xtype: 'textfield',
             cls: 'nx-no-border',
@@ -102,6 +101,27 @@ Ext.define('NX.coreui.view.repository.RepositorySettingsForm', {
             readOnly: true
           },
           {
+            xtype: 'displayfield',
+            cls: 'nx-no-border',
+            name: 'size',
+            itemId: 'size',
+            labelAlign: 'left',
+            fieldLabel: NX.I18n.get('Repository_RepositorySettingsForm_Size_FieldLabel'),
+            helpText: NX.I18n.get('Repository_RepositorySettingsForm_Size_HelpText'),
+            renderer: Ext.util.Format.fileSize,
+            readOnly: true
+          },
+          {
+            xtype: 'displayfield',
+            cls: 'nx-no-border',
+            name: 'blobCount',
+            itemId: 'blobCount',
+            labelAlign: 'left',
+            fieldLabel: NX.I18n.get('Repository_RepositorySettingsForm_BlobCount_FieldLabel'),
+            helpText: NX.I18n.get('Repository_RepositorySettingsForm_BlobCount_HelpText'),
+            readOnly: true
+          },
+          {
             xtype: 'checkbox',
             name: 'online',
             itemId: 'online',
@@ -110,7 +130,9 @@ Ext.define('NX.coreui.view.repository.RepositorySettingsForm', {
             helpText: NX.I18n.get('Repository_RepositorySettingsForm_Online_HelpText'),
             value: true
           }
+
         ]
+
       }
     ]);
 

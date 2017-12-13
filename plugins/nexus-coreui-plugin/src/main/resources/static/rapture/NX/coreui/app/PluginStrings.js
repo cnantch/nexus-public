@@ -371,6 +371,11 @@ Ext.define('NX.coreui.app.PluginStrings', {
     Repository_Facet_HttpClientFacet_HTTP_Title: 'HTTP request settings',
     Repository_RepositoryList_Size_Header: 'Size',
     Repository_RepositoryList_BlobCount_Header: 'Blob count',
+    Repository_RepositorySettingsForm_Title: 'Size and the Blob Count',
+    Repository_RepositorySettingsForm_Size_FieldLabel:'Size',
+    Repository_RepositorySettingsForm_Size_HelpText:'The size of the current repository',
+    Repository_RepositorySettingsForm_BlobCount_FieldLabel:'Blob count',
+    Repository_RepositorySettingsForm_BlobCount_HelpText:'The blob count of the current repository',
 
     HealthCheckRepositoryColumn_Header: 'Health check',
     HealthCheckRepositoryColumn_Analyzing: 'Analyzing&hellip;',

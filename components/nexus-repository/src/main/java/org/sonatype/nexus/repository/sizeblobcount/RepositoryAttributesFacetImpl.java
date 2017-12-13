@@ -4,13 +4,10 @@ import com.google.common.collect.Streams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonatype.nexus.repository.FacetSupport;
-import org.sonatype.nexus.repository.Repository;
-import org.sonatype.nexus.repository.group.GroupFacet;
 import org.sonatype.nexus.repository.storage.*;
 import org.sonatype.nexus.repository.transaction.TransactionalStoreMetadata;
 import org.sonatype.nexus.transaction.UnitOfWork;
 
-import javax.inject.Inject;
 import javax.inject.Named;
 import java.util.Arrays;
 
@@ -48,8 +45,10 @@ public class RepositoryAttributesFacetImpl extends FacetSupport implements Repos
                 Iterable<Asset> assets = storageTx.browseAssets(bucket);
 
 
+                final long blobCount = storageTx.countAssets(Query.builder().where("1").eq(1).build(), Arrays.asList(getRepository()));
+
+
                 if (assets != null) {
-                    long blobCount = storageTx.countAssets(Query.builder().where("1").eq(1).build(), Arrays.asList(getRepository()));
                     return new SizeBlobCount(Streams.stream(assets).mapToLong(value -> value.size()).sum(),
                             blobCount);
                 }
@@ -59,5 +58,5 @@ public class RepositoryAttributesFacetImpl extends FacetSupport implements Repos
             });
         }
         return new SizeBlobCount(0,0);
-    }git statu
+    }
 }
