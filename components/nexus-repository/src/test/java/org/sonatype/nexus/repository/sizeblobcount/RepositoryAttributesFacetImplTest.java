@@ -180,8 +180,7 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
         /**
          * Return 0 for size and 0 for blobcount
          */
-        assertThat(0L).isEqualTo(repositoryAttributesFacet.size());
-        assertThat(0L).isEqualTo(repositoryAttributesFacet.blobCount());
+        assertThat(new SizeBlobCount(0,0)).isEqualTo(repositoryAttributesFacet.calculateSizeBlobCount());assertThat(new SizeBlobCount(0,0)).isEqualTo(repositoryAttributesFacet.calculateSizeBlobCount());
     }
 
     @Test
@@ -203,8 +202,7 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
         /**
          * Return 0 for size and 0 for blobcount
          */
-        assertThat(0L).isEqualTo(repositoryAttributesFacet.size());
-        assertThat(0L).isEqualTo(repositoryAttributesFacet.blobCount());
+        assertThat(new SizeBlobCount(0,0)).isEqualTo(repositoryAttributesFacet.calculateSizeBlobCount());
     }
 
     @Test
@@ -229,8 +227,7 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
         /**
          * Return the size and the blob count of the two assets
          */
-        assertThat(4000L).isEqualTo(repositoryAttributesFacet.size());
-        assertThat(2L).isEqualTo(repositoryAttributesFacet.blobCount());
+        assertThat(new SizeBlobCount(4000,2)).isEqualTo(repositoryAttributesFacet.calculateSizeBlobCount());
     }
 
     @Test
@@ -258,7 +255,6 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
         /**
          * Return the size and the blob count of the group repository
          */
-        assertThat(0L).isEqualTo(repositoryAttributesFacet.size());
-        assertThat(0L).isEqualTo(repositoryAttributesFacet.blobCount());
+        assertThat(new SizeBlobCount(0,0)).isEqualTo(repositoryAttributesFacet.calculateSizeBlobCount());
     }
 }

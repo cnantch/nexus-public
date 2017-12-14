@@ -463,42 +463,10 @@ public class RepositoryManagerImpl
   public void calculateSizeBlobCount() {
     for (Repository repo : repositories.values()) {
       RepositoryAttributesFacet repositoryAttributesFacet = repo.facet(RepositoryAttributesFacet.class);
-      SizeBlobCount sizeBlobCount = calculateSizeBlobCount(repo);
+      SizeBlobCount sizeBlobCount = repositoryAttributesFacet.calculateSizeBlobCount();
       repositoryAttributesFacet.setSize(sizeBlobCount.getSize());
       repositoryAttributesFacet.setBlobCount(sizeBlobCount.getBlobCount());
       log.debug("Repository name {} , Size {} , Blob count {}", repo.getName(), repositoryAttributesFacet.size(), repositoryAttributesFacet.blobCount());
     }
-  }
-
-  /**
-   * Calculate the size and the blob count of a repository
-   * This method returns 0,0 when the repository  has a group or proxy type
-   * @param repository - The repository
-   * @return
-   */
-  private SizeBlobCount calculateSizeBlobCount(Repository repository) {
-    if (repository.optionalFacet(StorageFacet.class).isPresent()) {
-      return TransactionalStoreMetadata.operation.withDb(repository.facet(StorageFacet.class).txSupplier()).call(() -> {
-        final StorageTx storageTx = UnitOfWork.currentTx();
-
-        //First Get the bucket
-        Bucket bucket = storageTx.findBucket(repository);
-
-        //Assets of the bucket
-        Iterable<Asset> assets = storageTx.browseAssets(bucket);
-
-
-        final long blobCount = storageTx.countAssets(Query.builder().where("1").eq(1).build(), Arrays.asList(repository));
-        if (assets != null) {
-          long size = Streams.stream(assets).mapToLong(value -> value.size()).sum();
-          return new SizeBlobCount(size,
-                  blobCount);
-        }
-
-        return new SizeBlobCount(0,0);
-
-      });
-    }
-    return new SizeBlobCount(0,0);
   }
 }

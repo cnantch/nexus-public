@@ -15,4 +15,5 @@ public interface RepositoryAttributesFacet extends Facet{
 
     void setBlobCount(long size);
 
+    SizeBlobCount calculateSizeBlobCount();
 }

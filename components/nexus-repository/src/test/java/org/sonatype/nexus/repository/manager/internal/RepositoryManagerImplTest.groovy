@@ -12,6 +12,11 @@
  */
 package org.sonatype.nexus.repository.manager.internal
 
+import org.mockito.Matchers
+import org.mockito.Mockito
+import org.sonatype.nexus.repository.sizeblobcount.RepositoryAttributesFacet
+import org.sonatype.nexus.repository.sizeblobcount.SizeBlobCount
+
 import javax.inject.Provider
 
 import org.sonatype.goodies.testsupport.TestSupport
@@ -46,9 +51,11 @@ import static java.util.Collections.singletonList
 import static org.fest.assertions.api.Assertions.assertThat
 import static org.hamcrest.Matchers.instanceOf
 import static org.junit.Assert.assertFalse
+import static org.junit.Assert.assertThat
 import static org.mockito.Matchers.any
 import static org.mockito.Matchers.isA
 import static org.mockito.Mockito.atLeastOnce
+import static org.mockito.Mockito.mock
 import static org.mockito.Mockito.never
 import static org.mockito.Mockito.times
 import static org.mockito.Mockito.verify
@@ -352,5 +359,23 @@ class RepositoryManagerImplTest
     BucketUpdatedEvent bucketEvent = new BucketUpdatedEvent(entityMetadata, 'some-deleted-repo$uuid')
     repositoryManager.onBucketUpdated(bucketEvent)
     verify(eventManager, never()).post(isA(RepositoryMetadataUpdatedEvent))
+  }
+
+  @Test
+  void 'calculate the blob count and the size of the repository'() {
+    repositoryManager = buildRepositoryManagerImpl(true)
+    RepositoryAttributesFacet repositoryAttributesFacet = mock(RepositoryAttributesFacet.class)
+    when(repositoryAttributesFacet.calculateSizeBlobCount()).thenReturn(new SizeBlobCount(0,0))
+    when(apacheSnapshotsRepository.facet(RepositoryAttributesFacet.class)).thenReturn(repositoryAttributesFacet)
+    when(mavenCentralRepository.facet(RepositoryAttributesFacet.class)).thenReturn(repositoryAttributesFacet)
+    when(thirdPartyRepository.facet(RepositoryAttributesFacet.class)).thenReturn(repositoryAttributesFacet)
+    when(groupRepository.facet(RepositoryAttributesFacet.class)).thenReturn(repositoryAttributesFacet)
+
+    repositoryManager.calculateSizeBlobCount()
+
+    verify(repositoryAttributesFacet, times(4)).calculateSizeBlobCount()
+    verify(repositoryAttributesFacet, times(4)).setSize(0)
+    verify(repositoryAttributesFacet, times(4)).setBlobCount(0)
+
   }
 }

@@ -50,7 +50,7 @@ public class RepositoryAttributesFacetImpl extends FacetSupport implements Repos
     }
 
 
-    private SizeBlobCount getSizeAndBlobCount() {
+    public SizeBlobCount calculateSizeBlobCount() {
         logger.trace("Repository name {} ", getRepository().getName());
         if (optionalFacet(StorageFacet.class).isPresent()) {
             return TransactionalStoreMetadata.operation.withDb(facet(StorageFacet.class).txSupplier()).call(() -> {
@@ -61,18 +61,13 @@ public class RepositoryAttributesFacetImpl extends FacetSupport implements Repos
 
                 //Assets of the bucket
                 Iterable<Asset> assets = storageTx.browseAssets(bucket);
-
-
-                final long blobCount = storageTx.countAssets(Query.builder().where("1").eq(1).build(), Arrays.asList(getRepository()));
-
-
+                long blobCount = 0;
+                long size = 0;
                 if (assets != null) {
-                    return new SizeBlobCount(Streams.stream(assets).mapToLong(value -> value.size()).sum(),
-                            blobCount);
+                    blobCount = storageTx.countAssets(Query.builder().where("1").eq(1).build(), Arrays.asList(getRepository()));
+                    size = Streams.stream(assets).mapToLong(value -> value.size()).sum();
                 }
-
-                return new SizeBlobCount(0,0);
-
+                return new SizeBlobCount(size, blobCount);
             });
         }
         return new SizeBlobCount(0,0);
