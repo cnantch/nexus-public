@@ -12,10 +12,7 @@
  */
 package org.sonatype.nexus.repository.manager.internal;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Stream;
 
 import javax.annotation.Nullable;
@@ -24,6 +21,7 @@ import javax.inject.Named;
 import javax.inject.Provider;
 import javax.inject.Singleton;
 
+import com.google.common.collect.Streams;
 import org.sonatype.nexus.blobstore.api.BlobStoreManager;
 import org.sonatype.nexus.common.app.ManagedLifecycle;
 import org.sonatype.nexus.common.collect.NestedAttributesMap;
@@ -53,12 +51,17 @@ import org.sonatype.nexus.repository.manager.RepositoryManager;
 import org.sonatype.nexus.repository.manager.RepositoryMetadataUpdatedEvent;
 import org.sonatype.nexus.repository.manager.RepositoryRestoredEvent;
 import org.sonatype.nexus.repository.manager.RepositoryUpdatedEvent;
+import org.sonatype.nexus.repository.sizeblobcount.RepositoryAttributesFacet;
+import org.sonatype.nexus.repository.sizeblobcount.SizeBlobCount;
+import org.sonatype.nexus.repository.storage.*;
 import org.sonatype.nexus.repository.storage.internal.BucketUpdatedEvent;
+import org.sonatype.nexus.repository.transaction.TransactionalStoreMetadata;
 import org.sonatype.nexus.repository.view.ViewFacet;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import com.google.common.eventbus.Subscribe;
+import org.sonatype.nexus.transaction.UnitOfWork;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
@@ -76,13 +79,13 @@ import static org.sonatype.nexus.common.stateguard.StateGuardLifecycleSupport.St
 @Singleton
 @ManagedLifecycle(phase = SERVICES)
 @ManagedObject(
-    domain = "org.sonatype.nexus.repository.manager",
-    typeClass = RepositoryManager.class,
-    description = "Repository manager"
+        domain = "org.sonatype.nexus.repository.manager",
+        typeClass = RepositoryManager.class,
+        description = "Repository manager"
 )
 public class RepositoryManagerImpl
-    extends StateGuardLifecycleSupport
-    implements RepositoryManager, EventAware
+        extends StateGuardLifecycleSupport
+        implements RepositoryManager, EventAware
 {
   private final DatabaseFreezeService databaseFreezeService;
 
@@ -290,8 +293,8 @@ public class RepositoryManagerImpl
   @Guarded(by = STARTED)
   public Iterable<Repository> browseForBlobStore(String blobStoreId) {
     return stream(browse().spliterator(), true)
-        .filter(r -> blobStoreId.equals(r.getConfiguration().attributes("storage").get("blobStoreName")))
-        ::iterator;
+            .filter(r -> blobStoreId.equals(r.getConfiguration().attributes("storage").get("blobStoreName")))
+            ::iterator;
   }
 
   @Override
@@ -385,9 +388,9 @@ public class RepositoryManagerImpl
 
   private void removeRepositoryFromAllGroups(final Repository repositoryToRemove) throws Exception {
     for (Repository group : repositories.values()) {
-        Optional<GroupFacet> groupFacet = group.optionalFacet(GroupFacet.class);
-        if (groupFacet.isPresent() && groupFacet.get().member(repositoryToRemove)) {
-          removeRepositoryFromGroup(repositoryToRemove, group);
+      Optional<GroupFacet> groupFacet = group.optionalFacet(GroupFacet.class);
+      if (groupFacet.isPresent() && groupFacet.get().member(repositoryToRemove)) {
+        removeRepositoryFromGroup(repositoryToRemove, group);
       }
     }
   }
@@ -400,11 +403,11 @@ public class RepositoryManagerImpl
 
   private Stream<Object> blobstoreUsageStream(final String blobStoreName) {
     return stream(browse().spliterator(), false)
-      .map(Repository::getConfiguration)
-      .map(Configuration::getAttributes)
-      .map(a -> a.get("storage"))
-      .map(s -> s.get("blobStoreName"))
-      .filter(blobStoreName::equals);
+            .map(Repository::getConfiguration)
+            .map(Configuration::getAttributes)
+            .map(a -> a.get("storage"))
+            .map(s -> s.get("blobStoreName"))
+            .filter(blobStoreName::equals);
   }
 
   @Override
@@ -452,5 +455,50 @@ public class RepositoryManagerImpl
     else {
       log.debug("Not posting metadata update event for deleted repository {}", event.getRepositoryName());
     }
+  }
+
+  /**
+   * Calculate the size and the blob count of all repositories
+   */
+  public void calculateSizeBlobCount() {
+    for (Repository repo : repositories.values()) {
+      RepositoryAttributesFacet repositoryAttributesFacet = repo.facet(RepositoryAttributesFacet.class);
+      SizeBlobCount sizeBlobCount = calculateSizeBlobCount(repo);
+      repositoryAttributesFacet.setSize(sizeBlobCount.getSize());
+      repositoryAttributesFacet.setBlobCount(sizeBlobCount.getBlobCount());
+      log.debug("Repository name {} , Size {} , Blob count {}", repo.getName(), repositoryAttributesFacet.size(), repositoryAttributesFacet.blobCount());
+    }
+  }
+
+  /**
+   * Calculate the size and the blob count of a repository
+   * This method returns 0,0 when the repository  has a group or proxy type
+   * @param repository - The repository
+   * @return
+   */
+  private SizeBlobCount calculateSizeBlobCount(Repository repository) {
+    if (repository.optionalFacet(StorageFacet.class).isPresent()) {
+      return TransactionalStoreMetadata.operation.withDb(repository.facet(StorageFacet.class).txSupplier()).call(() -> {
+        final StorageTx storageTx = UnitOfWork.currentTx();
+
+        //First Get the bucket
+        Bucket bucket = storageTx.findBucket(repository);
+
+        //Assets of the bucket
+        Iterable<Asset> assets = storageTx.browseAssets(bucket);
+
+
+        final long blobCount = storageTx.countAssets(Query.builder().where("1").eq(1).build(), Arrays.asList(repository));
+        if (assets != null) {
+          long size = Streams.stream(assets).mapToLong(value -> value.size()).sum();
+          return new SizeBlobCount(size,
+                  blobCount);
+        }
+
+        return new SizeBlobCount(0,0);
+
+      });
+    }
+    return new SizeBlobCount(0,0);
   }
 }

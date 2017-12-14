@@ -11,17 +11,24 @@ import org.sonatype.nexus.transaction.UnitOfWork;
 import javax.inject.Named;
 import java.util.Arrays;
 
+/**
+ * @since 3.7.0
+ */
 @Named
 public class RepositoryAttributesFacetImpl extends FacetSupport implements RepositoryAttributesFacet{
 
     private final static Logger logger = LoggerFactory.getLogger(RepositoryAttributesFacetImpl.class);
+
+    private long size;
+
+    private long blobCount;
 
     /**
      * Return the size of the repository
      * @return
      */
     public long size() {
-        return getSizeAndBlobCount().getSize();
+        return size;
     }
 
     /**
@@ -29,8 +36,19 @@ public class RepositoryAttributesFacetImpl extends FacetSupport implements Repos
      * @return
      */
     public long blobCount() {
-        return getSizeAndBlobCount().getBlobCount();
+        return blobCount;
     }
+
+    @Override
+    public void setSize(long size) {
+        this.size = size;
+    }
+
+    @Override
+    public void setBlobCount(long blobCount) {
+        this.blobCount = blobCount;
+    }
+
 
     private SizeBlobCount getSizeAndBlobCount() {
         logger.trace("Repository name {} ", getRepository().getName());
