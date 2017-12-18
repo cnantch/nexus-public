@@ -3,7 +3,6 @@ package org.sonatype.nexus.repository.sizeblobcount.internal;
 import org.fest.assertions.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Matchers;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.sonatype.goodies.testsupport.TestSupport;
@@ -13,8 +12,6 @@ import org.sonatype.nexus.repository.types.HostedType;
 
 import java.util.Arrays;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 

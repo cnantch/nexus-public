@@ -36,7 +36,7 @@ class RepositoryAttributesUpdatingTaskManagerTest  extends TestSupport
     private RepositoryAttributesUpdatingTaskManager repositoryAttributesUpdatingTaskManager;
 
     @Before
-    public void setUp() throws Exception {
+    void setUp() throws Exception {
         repositoryAttributesUpdatingTaskManager = new RepositoryAttributesUpdatingTaskManager(taskScheduler,
         CRON_EXPRESSION)
     }

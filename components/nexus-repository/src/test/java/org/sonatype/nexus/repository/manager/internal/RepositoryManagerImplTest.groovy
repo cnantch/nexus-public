@@ -12,13 +12,11 @@
  */
 package org.sonatype.nexus.repository.manager.internal
 
-import org.mockito.Matchers
-import org.mockito.Mockito
-import org.sonatype.nexus.repository.sizeblobcount.RepositoryAttributesFacet
-import org.sonatype.nexus.repository.sizeblobcount.SizeBlobCount
-
-import javax.inject.Provider
-
+import com.google.common.collect.ImmutableMap
+import org.junit.Before
+import org.junit.Test
+import org.mockito.ArgumentCaptor
+import org.mockito.Mock
 import org.sonatype.goodies.testsupport.TestSupport
 import org.sonatype.nexus.blobstore.api.BlobStoreManager
 import org.sonatype.nexus.common.collect.NestedAttributesMap
@@ -36,13 +34,11 @@ import org.sonatype.nexus.repository.config.internal.ConfigurationStore
 import org.sonatype.nexus.repository.group.GroupFacet
 import org.sonatype.nexus.repository.manager.DefaultRepositoriesContributor
 import org.sonatype.nexus.repository.manager.RepositoryMetadataUpdatedEvent
+import org.sonatype.nexus.repository.sizeblobcount.RepositoryAttributesFacet
+import org.sonatype.nexus.repository.sizeblobcount.SizeBlobCount
 import org.sonatype.nexus.repository.storage.internal.BucketUpdatedEvent
 
-import com.google.common.collect.ImmutableMap
-import org.junit.Before
-import org.junit.Test
-import org.mockito.ArgumentCaptor
-import org.mockito.Mock
+import javax.inject.Provider
 
 import static com.google.common.collect.Lists.asList
 import static com.google.common.collect.Lists.newArrayList
@@ -51,15 +47,9 @@ import static java.util.Collections.singletonList
 import static org.fest.assertions.api.Assertions.assertThat
 import static org.hamcrest.Matchers.instanceOf
 import static org.junit.Assert.assertFalse
-import static org.junit.Assert.assertThat
 import static org.mockito.Matchers.any
 import static org.mockito.Matchers.isA
-import static org.mockito.Mockito.atLeastOnce
-import static org.mockito.Mockito.mock
-import static org.mockito.Mockito.never
-import static org.mockito.Mockito.times
-import static org.mockito.Mockito.verify
-import static org.mockito.Mockito.when
+import static org.mockito.Mockito.*
 import static org.sonatype.nexus.blobstore.api.BlobStoreManager.DEFAULT_BLOBSTORE_NAME
 
 class RepositoryManagerImplTest

@@ -31,7 +31,7 @@ public class RepositoryAttributesUpdatingTaskManager
 
     @Inject
     public RepositoryAttributesUpdatingTaskManager(final TaskScheduler taskScheduler,
-                                                   @Named("${nexus.repositoryAttributesUpdate.cron:-0 */2 * * * ?}") final String repositoryAttributesUpdatingCron)
+                                                   @Named("${nexus.repositoryAttributesUpdate.cron:-0 */30 * * * ?}") final String repositoryAttributesUpdatingCron)
     {
         this.taskScheduler = checkNotNull(taskScheduler);
         this.repositoryAttributesUpdatingCron = checkNotNull(repositoryAttributesUpdatingCron);
