@@ -8,6 +8,9 @@ import org.mockito.Mockito;
 import org.sonatype.goodies.testsupport.TestSupport;
 import org.sonatype.nexus.repository.Repository;
 import org.sonatype.nexus.repository.manager.RepositoryManager;
+import org.sonatype.nexus.repository.sizeblobcount.RepositoryAttributesFacet;
+import org.sonatype.nexus.repository.sizeblobcount.SizeBlobCount;
+import org.sonatype.nexus.repository.types.GroupType;
 import org.sonatype.nexus.repository.types.HostedType;
 
 import java.util.Arrays;
@@ -19,28 +22,27 @@ public class RepositoryAttributesUpdatingTaskTest extends TestSupport{
 
     RepositoryAttributesUpdatingTask repositoryAttributesUpdatingTask;
 
-    @Mock
-    RepositoryManager repositoryManager;
 
     @Mock
     Repository repository;
 
     @Mock
-    Repository anotherRepository;
+    HostedType hostedType;
 
     @Mock
-    HostedType hostedType;
+    Repository groupRepository;
+
+    @Mock
+    GroupType groupType;
+
+    @Mock
+    RepositoryAttributesFacet repositoryAttributesFacet;
 
 
 
     @Before
     public void setUp() throws Exception {
-        repositoryAttributesUpdatingTask = new RepositoryAttributesUpdatingTask(repositoryManager);
-    }
-
-    @Test
-    public void check_name_of_the_task() throws Exception {
-        Assertions.assertThat(repositoryAttributesUpdatingTask.getMessage()).isEqualToIgnoringCase("Update the size and the blob count of the repository");
+        repositoryAttributesUpdatingTask = new RepositoryAttributesUpdatingTask();
     }
 
     @Test
@@ -49,16 +51,47 @@ public class RepositoryAttributesUpdatingTaskTest extends TestSupport{
         //Given
         when(repository.getName()).thenReturn("my-repo");
         when(repository.getType()).thenReturn(hostedType);
-        when(anotherRepository.getName()).thenReturn("my-another-repo");
-        when(anotherRepository.getType()).thenReturn(hostedType);
-        Iterable<Repository> repositories = Arrays.asList(repository, anotherRepository);
-
-        when(repositoryManager.browse()).thenReturn(repositories);
+        when(repository.facet(RepositoryAttributesFacet.class)).thenReturn(repositoryAttributesFacet);
 
         //When
-        repositoryAttributesUpdatingTask.execute();
+        repositoryAttributesUpdatingTask.execute(repository);
 
         //Then
-        Mockito.verify(repositoryManager, times(1)).calculateSizeBlobCount();
+        Mockito.verify(repositoryAttributesFacet, times(1)).calculateSizeBlobCount();
+        Assertions.assertThat(repositoryAttributesUpdatingTask.getMessage()).startsWith("Calculate the size and the blob count of the repository");
+    }
+
+    @Test
+    public void verify_the_execution_of_set_size_and_set_blob_count() throws Exception {
+        when(repositoryAttributesFacet.calculateSizeBlobCount()).thenReturn(new SizeBlobCount(1000l, 3L));
+
+        when(repository.getName()).thenReturn("my-repo");
+        when(repository.getType()).thenReturn(hostedType);
+        when(repository.facet(RepositoryAttributesFacet.class)).thenReturn(repositoryAttributesFacet);
+
+        //When
+        repositoryAttributesUpdatingTask.execute(repository);
+
+        //Then
+        Mockito.verify(repositoryAttributesFacet, times(1)).setSize(1000l);
+        Mockito.verify(repositoryAttributesFacet, times(1)).setBlobCount(3l);
+    }
+
+    @Test
+    public void verify_the_type_of_repository_which_been_used_on_this_task() throws Exception {
+
+        when(repository.getName()).thenReturn("my-repo");
+        when(repository.getType()).thenReturn(hostedType);
+        when(repository.facet(RepositoryAttributesFacet.class)).thenReturn(repositoryAttributesFacet);
+
+        when(groupRepository.getName()).thenReturn("my-repo-group");
+        when(groupRepository.getType()).thenReturn(groupType);
+
+        //When
+        repositoryAttributesUpdatingTask.execute(repository);
+
+        //Then
+        Assertions.assertThat(repositoryAttributesUpdatingTask.appliesTo(repository)).isTrue();
+        Assertions.assertThat(repositoryAttributesUpdatingTask.appliesTo(groupRepository)).isFalse();
     }
 }

@@ -54,6 +54,17 @@ Ext.define('NX.coreui.view.repository.RepositoryListTemplate', {
         dataIndex: 'format',
         stateId: 'format'
       },
+      {
+         text: NX.I18n.get('Repository_RepositoryList_Size_Header'),
+         dataIndex: 'size',
+         stateId: 'size',
+         renderer: Ext.util.Format.fileSize
+      },
+      {
+         text: NX.I18n.get('Repository_RepositoryList_BlobCount_Header'),
+         dataIndex: 'blobCount',
+          stateId: 'blobCount'
+       },
 
       {
         header: NX.I18n.get('Repository_RepositoryList_Status_Header'), dataIndex: 'status', stateId: 'status', flex: 1,

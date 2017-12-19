@@ -18,19 +18,19 @@ import static org.sonatype.nexus.repository.RepositoryTaskSupport.REPOSITORY_NAM
 @Singleton
 public class RepositoryAttributesUpdatingTaskDescriptor extends TaskDescriptorSupport
 {
-    public static final String TYPE_ID = "repository.attributes-update";
+    public static final String TYPE_ID = "repository.calculate-size-blobcount";
 
     @Inject
     public RepositoryAttributesUpdatingTaskDescriptor() {
         super(TYPE_ID,
                 RepositoryAttributesUpdatingTask.class,
-                "Update size and the blob count",
+                " Calculate the size and the blob count",
                 VISIBLE,
                 EXPOSED,
                 new RepositoryCombobox(
                         REPOSITORY_NAME_FIELD_ID,
                         "Repository",
-                        "Select the repository to purge unused snapshot versions from",
+                        "Select the repository which you will calculate the size and the blob count",
                         FormField.MANDATORY
                 ).includingAnyOfFacets(RepositoryAttributesFacet.class).includeAnEntryForAllRepositories()
         );

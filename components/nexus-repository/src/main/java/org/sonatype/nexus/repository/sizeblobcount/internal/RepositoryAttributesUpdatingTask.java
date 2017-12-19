@@ -2,7 +2,12 @@ package org.sonatype.nexus.repository.sizeblobcount.internal;
 
 
 import org.sonatype.nexus.logging.task.TaskLogging;
+import org.sonatype.nexus.repository.Repository;
+import org.sonatype.nexus.repository.RepositoryTaskSupport;
 import org.sonatype.nexus.repository.manager.RepositoryManager;
+import org.sonatype.nexus.repository.sizeblobcount.RepositoryAttributesFacet;
+import org.sonatype.nexus.repository.sizeblobcount.SizeBlobCount;
+import org.sonatype.nexus.repository.types.HostedType;
 import org.sonatype.nexus.scheduling.Cancelable;
 import org.sonatype.nexus.scheduling.TaskSupport;
 
@@ -18,26 +23,30 @@ import static org.sonatype.nexus.logging.task.TaskLogType.NEXUS_LOG_ONLY;
  */
 @Named
 @TaskLogging(NEXUS_LOG_ONLY)
-public class RepositoryAttributesUpdatingTask  extends TaskSupport
+public class RepositoryAttributesUpdatingTask  extends RepositoryTaskSupport
         implements Cancelable
 {
 
 
-    private RepositoryManager repositoryManager;
-
-    @Inject
-    public RepositoryAttributesUpdatingTask(RepositoryManager repositoryManager) {
-        this.repositoryManager = repositoryManager;
-    }
-
     @Override
     public String getMessage() {
-        return "Update the size and the blob count of the repository";
+        return "Calculate the size and the blob count of the repository " + getRepositoryField();
+    }
+
+
+    @Override
+    protected void execute(Repository repository) {
+        RepositoryAttributesFacet sizeBlobCountFacet = repository.facet(RepositoryAttributesFacet.class);
+        SizeBlobCount sizeBlobCount = sizeBlobCountFacet.calculateSizeBlobCount();
+        if (sizeBlobCount != null) {
+            sizeBlobCountFacet.setSize(sizeBlobCount.getSize());
+            sizeBlobCountFacet.setBlobCount(sizeBlobCount.getBlobCount());
+        }
+
     }
 
     @Override
-    protected Object execute() throws Exception {
-        repositoryManager.calculateSizeBlobCount();
-        return null;
+    protected boolean appliesTo(Repository repository) {
+        return repository.getType() instanceof HostedType;
     }
 }

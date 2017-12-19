@@ -56,8 +56,6 @@ Ext.define('NX.coreui.view.repository.RepositoryAdd', {
     me.down('#format').setVisible(false);
     me.down('#type').setVisible(false);
     me.down('#url').setVisible(false);
-    me.down('#size').setVisible(false);
-    me.down('#blobCount').setVisible(false);
     me.down('form').add({
       xtype: 'hiddenfield',
       name: 'recipe',
