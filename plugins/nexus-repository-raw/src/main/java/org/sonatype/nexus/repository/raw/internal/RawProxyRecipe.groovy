@@ -12,14 +12,6 @@
  */
 package org.sonatype.nexus.repository.raw.internal
 
-import org.sonatype.nexus.repository.sizeblobcount.RepositoryAttributesFacet
-
-import javax.annotation.Nonnull
-import javax.inject.Inject
-import javax.inject.Named
-import javax.inject.Provider
-import javax.inject.Singleton
-
 import org.sonatype.nexus.repository.Format
 import org.sonatype.nexus.repository.RecipeSupport
 import org.sonatype.nexus.repository.Repository
@@ -33,6 +25,7 @@ import org.sonatype.nexus.repository.proxy.ProxyHandler
 import org.sonatype.nexus.repository.purge.PurgeUnusedFacet
 import org.sonatype.nexus.repository.search.SearchFacet
 import org.sonatype.nexus.repository.security.SecurityHandler
+import org.sonatype.nexus.repository.sizeblobcount.SizeBlobCountAttributesFacet
 import org.sonatype.nexus.repository.storage.SingleAssetComponentMaintenance
 import org.sonatype.nexus.repository.storage.StorageFacet
 import org.sonatype.nexus.repository.storage.UnitOfWorkHandler
@@ -41,12 +34,14 @@ import org.sonatype.nexus.repository.view.ConfigurableViewFacet
 import org.sonatype.nexus.repository.view.Route
 import org.sonatype.nexus.repository.view.Router
 import org.sonatype.nexus.repository.view.ViewFacet
-import org.sonatype.nexus.repository.view.handlers.ConditionalRequestHandler
-import org.sonatype.nexus.repository.view.handlers.ContentHeadersHandler
-import org.sonatype.nexus.repository.view.handlers.ExceptionHandler
-import org.sonatype.nexus.repository.view.handlers.HandlerContributor
-import org.sonatype.nexus.repository.view.handlers.TimingHandler
+import org.sonatype.nexus.repository.view.handlers.*
 import org.sonatype.nexus.repository.view.matchers.token.TokenMatcher
+
+import javax.annotation.Nonnull
+import javax.inject.Inject
+import javax.inject.Named
+import javax.inject.Provider
+import javax.inject.Singleton
 
 import static org.sonatype.nexus.repository.http.HttpHandlers.notFound
 
@@ -93,7 +88,7 @@ class RawProxyRecipe
   Provider<SearchFacet> searchFacet
 
   @Inject
-  Provider<RepositoryAttributesFacet> repositoryAttributesFacet
+  Provider<SizeBlobCountAttributesFacet> sizeBlobCountAttributesFacet
 
   @Inject
   Provider<PurgeUnusedFacet> purgeUnusedFacet
@@ -148,7 +143,7 @@ class RawProxyRecipe
     repository.attach(componentMaintenance.get())
     repository.attach(searchFacet.get())
     repository.attach(purgeUnusedFacet.get())
-    repository.attach(repositoryAttributesFacet.get())
+    repository.attach(sizeBlobCountAttributesFacet.get())
   }
 
   /**

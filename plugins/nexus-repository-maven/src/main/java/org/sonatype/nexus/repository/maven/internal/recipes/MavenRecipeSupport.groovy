@@ -12,15 +12,10 @@
  */
 package org.sonatype.nexus.repository.maven.internal.recipes
 
-import org.sonatype.nexus.repository.attributes.AttributesFacet
-import org.sonatype.nexus.repository.sizeblobcount.RepositoryAttributesFacet
-
-import javax.inject.Inject
-import javax.inject.Provider
-
 import org.sonatype.nexus.repository.Format
 import org.sonatype.nexus.repository.RecipeSupport
 import org.sonatype.nexus.repository.Type
+import org.sonatype.nexus.repository.attributes.AttributesFacet
 import org.sonatype.nexus.repository.http.HttpMethods
 import org.sonatype.nexus.repository.http.PartialFetchHandler
 import org.sonatype.nexus.repository.maven.MavenPathParser
@@ -31,17 +26,17 @@ import org.sonatype.nexus.repository.maven.internal.matcher.MavenPathMatcher
 import org.sonatype.nexus.repository.maven.internal.matcher.MavenRepositoryMetadataMatcher
 import org.sonatype.nexus.repository.security.SecurityFacet
 import org.sonatype.nexus.repository.security.SecurityHandler
+import org.sonatype.nexus.repository.sizeblobcount.SizeBlobCountAttributesFacet
 import org.sonatype.nexus.repository.storage.StorageFacet
 import org.sonatype.nexus.repository.storage.UnitOfWorkHandler
 import org.sonatype.nexus.repository.view.ConfigurableViewFacet
 import org.sonatype.nexus.repository.view.Route.Builder
-import org.sonatype.nexus.repository.view.handlers.ConditionalRequestHandler
-import org.sonatype.nexus.repository.view.handlers.ContentHeadersHandler
-import org.sonatype.nexus.repository.view.handlers.ExceptionHandler
-import org.sonatype.nexus.repository.view.handlers.HandlerContributor
-import org.sonatype.nexus.repository.view.handlers.TimingHandler
+import org.sonatype.nexus.repository.view.handlers.*
 import org.sonatype.nexus.repository.view.matchers.ActionMatcher
 import org.sonatype.nexus.repository.view.matchers.logic.LogicMatchers
+
+import javax.inject.Inject
+import javax.inject.Provider
 
 /**
  * Maven recipe support.
@@ -92,7 +87,7 @@ abstract class MavenRecipeSupport
   final Provider<SecurityFacet> securityFacet
 
   @Inject
-  Provider<RepositoryAttributesFacet> repositoryAttributesfacet
+  Provider<SizeBlobCountAttributesFacet> sizeBlobCountAttributesfacet
 
   MavenRecipeSupport(Type type, Format format, MavenPathParser mavenPathParser, Provider<SecurityFacet> securityFacet) {
     super(type, format)

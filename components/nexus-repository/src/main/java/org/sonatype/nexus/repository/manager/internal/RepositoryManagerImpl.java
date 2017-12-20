@@ -21,7 +21,6 @@ import javax.inject.Named;
 import javax.inject.Provider;
 import javax.inject.Singleton;
 
-import com.google.common.collect.Streams;
 import org.sonatype.nexus.blobstore.api.BlobStoreManager;
 import org.sonatype.nexus.common.app.ManagedLifecycle;
 import org.sonatype.nexus.common.collect.NestedAttributesMap;
@@ -51,17 +50,12 @@ import org.sonatype.nexus.repository.manager.RepositoryManager;
 import org.sonatype.nexus.repository.manager.RepositoryMetadataUpdatedEvent;
 import org.sonatype.nexus.repository.manager.RepositoryRestoredEvent;
 import org.sonatype.nexus.repository.manager.RepositoryUpdatedEvent;
-import org.sonatype.nexus.repository.sizeblobcount.RepositoryAttributesFacet;
-import org.sonatype.nexus.repository.sizeblobcount.SizeBlobCount;
-import org.sonatype.nexus.repository.storage.*;
 import org.sonatype.nexus.repository.storage.internal.BucketUpdatedEvent;
-import org.sonatype.nexus.repository.transaction.TransactionalStoreMetadata;
 import org.sonatype.nexus.repository.view.ViewFacet;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import com.google.common.eventbus.Subscribe;
-import org.sonatype.nexus.transaction.UnitOfWork;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
@@ -454,19 +448,6 @@ public class RepositoryManagerImpl
     }
     else {
       log.debug("Not posting metadata update event for deleted repository {}", event.getRepositoryName());
-    }
-  }
-
-  /**
-   * Calculate the size and the blob count of all repositories
-   */
-  public void calculateSizeBlobCount() {
-    for (Repository repo : repositories.values()) {
-      RepositoryAttributesFacet repositoryAttributesFacet = repo.facet(RepositoryAttributesFacet.class);
-      SizeBlobCount sizeBlobCount = repositoryAttributesFacet.calculateSizeBlobCount();
-      repositoryAttributesFacet.setSize(sizeBlobCount.getSize());
-      repositoryAttributesFacet.setBlobCount(sizeBlobCount.getBlobCount());
-      log.debug("Repository name {} , Size {} , Blob count {}", repo.getName(), repositoryAttributesFacet.size(), repositoryAttributesFacet.blobCount());
     }
   }
 }

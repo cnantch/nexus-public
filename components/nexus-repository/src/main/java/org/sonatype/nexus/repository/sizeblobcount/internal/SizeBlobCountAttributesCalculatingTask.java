@@ -4,26 +4,22 @@ package org.sonatype.nexus.repository.sizeblobcount.internal;
 import org.sonatype.nexus.logging.task.TaskLogging;
 import org.sonatype.nexus.repository.Repository;
 import org.sonatype.nexus.repository.RepositoryTaskSupport;
-import org.sonatype.nexus.repository.manager.RepositoryManager;
-import org.sonatype.nexus.repository.sizeblobcount.RepositoryAttributesFacet;
-import org.sonatype.nexus.repository.sizeblobcount.SizeBlobCount;
+import org.sonatype.nexus.repository.sizeblobcount.SizeBlobCountAttributesFacet;
 import org.sonatype.nexus.repository.types.HostedType;
 import org.sonatype.nexus.scheduling.Cancelable;
-import org.sonatype.nexus.scheduling.TaskSupport;
 
-import javax.inject.Inject;
 import javax.inject.Named;
 
 import static org.sonatype.nexus.logging.task.TaskLogType.NEXUS_LOG_ONLY;
 
 /**
- * Background task (hidden from users) that updates the size and the blob count of a repository
+ * Task that calculates the size and the blob count of a repository
  *
  * @since 3.7.0
  */
 @Named
 @TaskLogging(NEXUS_LOG_ONLY)
-public class RepositoryAttributesUpdatingTask  extends RepositoryTaskSupport
+public class SizeBlobCountAttributesCalculatingTask extends RepositoryTaskSupport
         implements Cancelable
 {
 
@@ -36,12 +32,7 @@ public class RepositoryAttributesUpdatingTask  extends RepositoryTaskSupport
 
     @Override
     protected void execute(Repository repository) {
-        RepositoryAttributesFacet sizeBlobCountFacet = repository.facet(RepositoryAttributesFacet.class);
-        SizeBlobCount sizeBlobCount = sizeBlobCountFacet.calculateSizeBlobCount();
-        if (sizeBlobCount != null) {
-            sizeBlobCountFacet.setSize(sizeBlobCount.getSize());
-            sizeBlobCountFacet.setBlobCount(sizeBlobCount.getBlobCount());
-        }
+        repository.facet(SizeBlobCountAttributesFacet.class).calculateSizeBlobCount();
 
     }
 

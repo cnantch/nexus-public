@@ -3,12 +3,14 @@ package org.sonatype.nexus.repository.sizeblobcount;
 import com.google.common.base.Supplier;
 import com.google.common.collect.Lists;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+import com.orientechnologies.orient.core.tx.OTransaction;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Matchers;
 import org.mockito.Mock;
 import org.sonatype.goodies.testsupport.TestSupport;
 import org.sonatype.nexus.blobstore.api.BlobRef;
+import org.sonatype.nexus.common.collect.NestedAttributesMap;
 import org.sonatype.nexus.repository.Repository;
 import org.sonatype.nexus.repository.config.Configuration;
 import org.sonatype.nexus.repository.group.GroupFacet;
@@ -24,8 +26,11 @@ import static com.google.common.collect.ImmutableList.copyOf;
 import static org.fest.assertions.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.sonatype.nexus.repository.sizeblobcount.SizeBlobCountAttributesFacetImpl.BLOB_COUNT_KEY;
+import static org.sonatype.nexus.repository.sizeblobcount.SizeBlobCountAttributesFacetImpl.SIZE_BLOB_COUNT_KEY_ATTRIBUTES;
+import static org.sonatype.nexus.repository.sizeblobcount.SizeBlobCountAttributesFacetImpl.SIZE_KEY;
 
-public class RepositoryAttributesFacetImplTest extends TestSupport{
+public class SizeBlobCountAttributesFacetImplTest extends TestSupport{
 
 
     @Mock
@@ -41,8 +46,10 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
     Bucket bucket;
 
     @Mock
-    StorageTx tx;
+    StorageTx storageTx;
 
+    @Mock
+    private OTransaction tx;
 
     @Mock
     BlobRef blobRef;
@@ -58,6 +65,20 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
 
     private Repository initRepository() throws Exception {
         Repository repository = mock(Repository.class);
+
+        repository.attach(storageFacet);
+
+        when(repository.facet(StorageFacet.class)).thenReturn(storageFacet);
+        when(repository.optionalFacet(StorageFacet.class)).thenReturn(Optional.of(storageFacet));
+        when(storageFacet.txSupplier()).thenReturn(supplier);
+        when(storageFacet.txSupplier().get()).thenReturn(storageTx);
+        when(repository.getName()).thenReturn("MY-MAVEN-REPO");
+
+
+        return repository;
+    }
+
+    private void initConfiguration(Repository repository) throws Exception {
         Map<String, Map<String, Object>> attributes = new HashMap<>();
         Map<String, Object> valueOfFirstKey = new HashMap<>();
         valueOfFirstKey.put("blobStoreName", "blobstoreTest");
@@ -66,18 +87,7 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
         when(configuration.getRecipeName()).thenReturn("mavenRecipeTest");
         when(configuration.getAttributes()).thenReturn(attributes);
 
-        repository.attach(storageFacet);
-
-        when(repository.facet(StorageFacet.class)).thenReturn(storageFacet);
-        when(repository.optionalFacet(StorageFacet.class)).thenReturn(Optional.of(storageFacet));
-        when(storageFacet.txSupplier()).thenReturn(supplier);
-        when(storageFacet.txSupplier().get()).thenReturn(tx);
-        when(repository.getName()).thenReturn("MY-MAVEN-REPO");
-
-        repository.init(configuration);
-
-
-        return repository;
+        when(repository.getConfiguration()).thenReturn(configuration);
     }
 
     private Repository initRepositoryWithoutStorageFacet() throws Exception {
@@ -91,7 +101,7 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
         when(configuration.getAttributes()).thenReturn(attributes);
         when(repository.getName()).thenReturn("MY-MAVEN-REPO");
         when(repository.optionalFacet(StorageFacet.class)).thenReturn(Optional.empty());
-        repository.init(configuration);
+        when(repository.getConfiguration()).thenReturn(configuration);
 
 
         return repository;
@@ -111,15 +121,15 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
         when(repository.facet(StorageFacet.class)).thenReturn(storageFacet);
         when(repository.optionalFacet(StorageFacet.class)).thenReturn(Optional.of(storageFacet));
         when(storageFacet.txSupplier()).thenReturn(supplier);
-        when(storageFacet.txSupplier().get()).thenReturn(tx);
+        when(storageFacet.txSupplier().get()).thenReturn(storageTx);
 
         repository.init(configuration);
         repository.attach(storageFacet);
 
-        when(tx.findBucket(repository)).thenReturn(bucket);
-        when(tx.browseAssets(bucket)).thenReturn(Lists.newArrayList(assets));
+        when(storageTx.findBucket(repository)).thenReturn(bucket);
+        when(storageTx.browseAssets(bucket)).thenReturn(Lists.newArrayList(assets));
 
-        when(tx.countAssets(Matchers.any(Query.class), Matchers.any(Iterable.class))).thenReturn(2L);
+        when(storageTx.countAssets(Matchers.any(Query.class), Matchers.any(Iterable.class))).thenReturn(2L);
 
 
 
@@ -157,8 +167,6 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
 
     @Before
     public void setUp() throws Exception {
-        //Initilization of the unit work
-        when(tx.getDb()).thenReturn(oDatabaseDocumentTx);
     }
 
     @Test
@@ -168,19 +176,22 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
          * Un repository vide
          */
         Repository repository = initRepository();
+        initConfiguration(repository);
 
         //When
         /**
          * Appel de la méthode de comptage de la taille et du blob count
          */
-        RepositoryAttributesFacet repositoryAttributesFacet = new RepositoryAttributesFacetImpl();
-        repositoryAttributesFacet.attach(repository);
+        SizeBlobCountAttributesFacet sizeBlobCountAttributesFacet = new SizeBlobCountAttributesFacetImpl();
+        sizeBlobCountAttributesFacet.attach(repository);
+        sizeBlobCountAttributesFacet.calculateSizeBlobCount();
 
         //Then
         /**
          * Return 0 for size and 0 for blobcount
          */
-        assertThat(new SizeBlobCount(0,0)).isEqualTo(repositoryAttributesFacet.calculateSizeBlobCount());assertThat(new SizeBlobCount(0,0)).isEqualTo(repositoryAttributesFacet.calculateSizeBlobCount());
+        assertThat(sizeBlobCountAttributesFacet.blobCount()).isEqualTo(0);
+        assertThat(sizeBlobCountAttributesFacet.size()).isEqualTo(0);
     }
 
     @Test
@@ -195,14 +206,15 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
         /**
          * Appel de la méthode de comptage de la taille et du blob count
          */
-        RepositoryAttributesFacet repositoryAttributesFacet = new RepositoryAttributesFacetImpl();
-        repositoryAttributesFacet.attach(repository);
-
+        SizeBlobCountAttributesFacet sizeBlobCountAttributesFacet = new SizeBlobCountAttributesFacetImpl();
+        sizeBlobCountAttributesFacet.attach(repository);
+        sizeBlobCountAttributesFacet.calculateSizeBlobCount();
         //Then
         /**
          * Return 0 for size and 0 for blobcount
          */
-        assertThat(new SizeBlobCount(0,0)).isEqualTo(repositoryAttributesFacet.calculateSizeBlobCount());
+        assertThat(sizeBlobCountAttributesFacet.blobCount()).isEqualTo(0);
+        assertThat(sizeBlobCountAttributesFacet.size()).isEqualTo(0);
     }
 
     @Test
@@ -215,19 +227,26 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
         Asset asset1 = mockAsset("org.edf.test:1.0", 1500);
         Asset asset2 = mockAsset("org.edf.openam:1.0", 2500);
         Repository repository = initRepositoryWithAssets(asset1, asset2);
+        initConfiguration(repository);
+        Map<String, Object> backing = new HashMap<>();
+        backing.put(SIZE_KEY, 4000L);
+        backing.put(BLOB_COUNT_KEY, 2);
+        configuration.getAttributes().put(SIZE_BLOB_COUNT_KEY_ATTRIBUTES, backing);
 
         //When
         /**
          * Appel de la méthode de comptage de la taille et du blob count
          */
-        RepositoryAttributesFacet repositoryAttributesFacet = new RepositoryAttributesFacetImpl();
-        repositoryAttributesFacet.attach(repository);
+        SizeBlobCountAttributesFacet sizeBlobCountAttributesFacet = new SizeBlobCountAttributesFacetImpl();
+        sizeBlobCountAttributesFacet.attach(repository);
+        sizeBlobCountAttributesFacet.calculateSizeBlobCount();
 
         //Then
         /**
          * Return the size and the blob count of the two assets
          */
-        assertThat(new SizeBlobCount(4000,2)).isEqualTo(repositoryAttributesFacet.calculateSizeBlobCount());
+        assertThat(sizeBlobCountAttributesFacet.blobCount()).isEqualTo(2);
+        assertThat(sizeBlobCountAttributesFacet.size()).isEqualTo(4000);
     }
 
     @Test
@@ -241,20 +260,28 @@ public class RepositoryAttributesFacetImplTest extends TestSupport{
         Repository repository2 = initRepositoryWithAssets(asset3, asset4);
         Repository groupRepository = groupRepository("MY-REMO-MAVEN-GROUP", repository, repository2);
         Bucket groupBucket = mock(Bucket.class);
-        when(tx.findBucket(groupRepository)).thenReturn(groupBucket);
+        when(storageTx.findBucket(groupRepository)).thenReturn(groupBucket);
+        Map<String, Object> backing = new HashMap<>();
+        backing.put(SIZE_KEY, 0L);
+        backing.put(BLOB_COUNT_KEY, 0);
+        NestedAttributesMap attributesMap = new NestedAttributesMap(SIZE_BLOB_COUNT_KEY_ATTRIBUTES, backing);
+        when(groupBucket.attributes()).thenReturn(attributesMap);
+        initConfiguration(groupRepository);
 
 
         //When
         /**
          * Appel de la méthode de comptage de la taille et du blob count
          */
-        RepositoryAttributesFacet repositoryAttributesFacet = new RepositoryAttributesFacetImpl();
-        repositoryAttributesFacet.attach(groupRepository);
+        SizeBlobCountAttributesFacet sizeBlobCountAttributesFacet = new SizeBlobCountAttributesFacetImpl();
+        sizeBlobCountAttributesFacet.attach(groupRepository);
+        sizeBlobCountAttributesFacet.calculateSizeBlobCount();
 
         //Then
         /**
          * Return the size and the blob count of the group repository
          */
-        assertThat(new SizeBlobCount(0,0)).isEqualTo(repositoryAttributesFacet.calculateSizeBlobCount());
+        assertThat(sizeBlobCountAttributesFacet.size()).isEqualTo(0);
+        assertThat(sizeBlobCountAttributesFacet.blobCount()).isEqualTo(0);
     }
 }

@@ -12,12 +12,11 @@
  */
 package org.sonatype.nexus.repository.manager;
 
-import javax.annotation.Nullable;
-
 import org.sonatype.goodies.lifecycle.Lifecycle;
 import org.sonatype.nexus.repository.Repository;
 import org.sonatype.nexus.repository.config.Configuration;
-import org.sonatype.nexus.repository.sizeblobcount.SizeBlobCount;
+
+import javax.annotation.Nullable;
 
 /**
  * Repository manager.
@@ -49,8 +48,4 @@ public interface RepositoryManager
 
   long blobstoreUsageCount(String blobStoreName);
 
-  /**
-   * @since 3.7.1
-   */
-  void calculateSizeBlobCount();
 }

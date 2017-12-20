@@ -34,8 +34,6 @@ import org.sonatype.nexus.repository.config.internal.ConfigurationStore
 import org.sonatype.nexus.repository.group.GroupFacet
 import org.sonatype.nexus.repository.manager.DefaultRepositoriesContributor
 import org.sonatype.nexus.repository.manager.RepositoryMetadataUpdatedEvent
-import org.sonatype.nexus.repository.sizeblobcount.RepositoryAttributesFacet
-import org.sonatype.nexus.repository.sizeblobcount.SizeBlobCount
 import org.sonatype.nexus.repository.storage.internal.BucketUpdatedEvent
 
 import javax.inject.Provider
@@ -349,23 +347,5 @@ class RepositoryManagerImplTest
     BucketUpdatedEvent bucketEvent = new BucketUpdatedEvent(entityMetadata, 'some-deleted-repo$uuid')
     repositoryManager.onBucketUpdated(bucketEvent)
     verify(eventManager, never()).post(isA(RepositoryMetadataUpdatedEvent))
-  }
-
-  @Test
-  void 'calculate the blob count and the size of the repository'() {
-    repositoryManager = buildRepositoryManagerImpl(true)
-    RepositoryAttributesFacet repositoryAttributesFacet = mock(RepositoryAttributesFacet.class)
-    when(repositoryAttributesFacet.calculateSizeBlobCount()).thenReturn(new SizeBlobCount(0,0))
-    when(apacheSnapshotsRepository.facet(RepositoryAttributesFacet.class)).thenReturn(repositoryAttributesFacet)
-    when(mavenCentralRepository.facet(RepositoryAttributesFacet.class)).thenReturn(repositoryAttributesFacet)
-    when(thirdPartyRepository.facet(RepositoryAttributesFacet.class)).thenReturn(repositoryAttributesFacet)
-    when(groupRepository.facet(RepositoryAttributesFacet.class)).thenReturn(repositoryAttributesFacet)
-
-    repositoryManager.calculateSizeBlobCount()
-
-    verify(repositoryAttributesFacet, times(4)).calculateSizeBlobCount()
-    verify(repositoryAttributesFacet, times(4)).setSize(0)
-    verify(repositoryAttributesFacet, times(4)).setBlobCount(0)
-
   }
 }

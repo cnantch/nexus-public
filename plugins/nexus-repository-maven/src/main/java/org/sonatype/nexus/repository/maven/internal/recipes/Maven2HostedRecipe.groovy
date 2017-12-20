@@ -23,7 +23,6 @@ import org.sonatype.nexus.repository.maven.internal.MavenSecurityFacet
 import org.sonatype.nexus.repository.maven.internal.VersionPolicyHandler
 import org.sonatype.nexus.repository.maven.internal.hosted.*
 import org.sonatype.nexus.repository.search.SearchFacet
-import org.sonatype.nexus.repository.sizeblobcount.RepositoryAttributesFacet
 import org.sonatype.nexus.repository.types.HostedType
 import org.sonatype.nexus.repository.view.ConfigurableViewFacet
 import org.sonatype.nexus.repository.view.Router
@@ -98,7 +97,7 @@ class Maven2HostedRecipe
     repository.attach(mavenPurgeSnapshotsFacet.get())
     repository.attach(removeSnapshotsFacet.get())
     repository.attach(configure(viewFacet.get()))
-    repository.attach(repositoryAttributesfacet.get())
+    repository.attach(sizeBlobCountAttributesfacet.get())
   }
 
   private ViewFacet configure(final ConfigurableViewFacet facet) {

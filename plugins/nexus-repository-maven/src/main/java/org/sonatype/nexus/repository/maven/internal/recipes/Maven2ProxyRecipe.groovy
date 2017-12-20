@@ -113,7 +113,7 @@ class Maven2ProxyRecipe
     repository.attach(purgeUnusedFacet.get())
     repository.attach(removeSnapshotsFacet.get())
     repository.attach(configure(viewFacet.get()))
-    repository.attach(repositoryAttributesfacet.get())
+    repository.attach(sizeBlobCountAttributesfacet.get())
   }
 
   private ViewFacet configure(final ConfigurableViewFacet facet) {

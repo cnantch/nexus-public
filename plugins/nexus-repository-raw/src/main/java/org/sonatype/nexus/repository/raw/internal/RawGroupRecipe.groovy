@@ -12,14 +12,6 @@
  */
 package org.sonatype.nexus.repository.raw.internal
 
-import org.sonatype.nexus.repository.sizeblobcount.RepositoryAttributesFacet
-
-import javax.annotation.Nonnull
-import javax.inject.Inject
-import javax.inject.Named
-import javax.inject.Provider
-import javax.inject.Singleton
-
 import org.sonatype.nexus.repository.Format
 import org.sonatype.nexus.repository.RecipeSupport
 import org.sonatype.nexus.repository.Repository
@@ -29,16 +21,23 @@ import org.sonatype.nexus.repository.group.GroupFacet
 import org.sonatype.nexus.repository.group.GroupHandler
 import org.sonatype.nexus.repository.http.HttpHandlers
 import org.sonatype.nexus.repository.security.SecurityHandler
+import org.sonatype.nexus.repository.sizeblobcount.SizeBlobCountAttributesFacet
 import org.sonatype.nexus.repository.storage.StorageFacet
 import org.sonatype.nexus.repository.types.GroupType
 import org.sonatype.nexus.repository.view.ConfigurableViewFacet
-import org.sonatype.nexus.repository.view.handlers.ExceptionHandler
 import org.sonatype.nexus.repository.view.Route
 import org.sonatype.nexus.repository.view.Router
 import org.sonatype.nexus.repository.view.ViewFacet
+import org.sonatype.nexus.repository.view.handlers.ExceptionHandler
 import org.sonatype.nexus.repository.view.handlers.HandlerContributor
 import org.sonatype.nexus.repository.view.handlers.TimingHandler
 import org.sonatype.nexus.repository.view.matchers.token.TokenMatcher
+
+import javax.annotation.Nonnull
+import javax.inject.Inject
+import javax.inject.Named
+import javax.inject.Provider
+import javax.inject.Singleton
 
 /**
  * Raw group repository recipe.
@@ -68,7 +67,7 @@ class RawGroupRecipe
   Provider<GroupFacet> groupFacet
 
   @Inject
-  Provider<RepositoryAttributesFacet> repositoryAttributesFacet
+  Provider<SizeBlobCountAttributesFacet> sizeBlobCountAttributesFacet
 
   @Inject
   ExceptionHandler exceptionHandler
@@ -99,7 +98,7 @@ class RawGroupRecipe
     repository.attach(attributesFacet.get())
     repository.attach(configure(viewFacet.get()))
     repository.attach(groupFacet.get())
-    repository.attach(repositoryAttributesFacet.get())
+    repository.attach(sizeBlobCountAttributesFacet.get())
   }
 
   /**
