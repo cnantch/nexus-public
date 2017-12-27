@@ -2,7 +2,6 @@ package org.sonatype.nexus.repository.sizeblobcount;
 
 import com.google.common.base.Supplier;
 import com.google.common.collect.Lists;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.tx.OTransaction;
 import org.junit.Before;
 import org.junit.Test;
@@ -26,42 +25,31 @@ import static com.google.common.collect.ImmutableList.copyOf;
 import static org.fest.assertions.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.sonatype.nexus.repository.sizeblobcount.SizeBlobCountAttributesFacetImpl.BLOB_COUNT_KEY;
-import static org.sonatype.nexus.repository.sizeblobcount.SizeBlobCountAttributesFacetImpl.SIZE_BLOB_COUNT_KEY_ATTRIBUTES;
-import static org.sonatype.nexus.repository.sizeblobcount.SizeBlobCountAttributesFacetImpl.SIZE_KEY;
+import static org.sonatype.nexus.repository.sizeblobcount.SizeBlobCountAttributesFacetImpl.*;
 
 public class SizeBlobCountAttributesFacetImplTest extends TestSupport{
 
 
     @Mock
-    RepositoryManager repositoryManager;
+    private RepositoryManager repositoryManager;
 
     @Mock
-    Configuration configuration;
+    private Configuration configuration;
 
     @Mock
-    StorageFacet storageFacet;
+    private StorageFacet storageFacet;
 
     @Mock
-    Bucket bucket;
+    private Bucket bucket;
 
     @Mock
-    StorageTx storageTx;
+    private StorageTx storageTx;
 
     @Mock
-    private OTransaction tx;
+    private Supplier<StorageTx> supplier;
 
     @Mock
-    BlobRef blobRef;
-
-    @Mock
-    Supplier<StorageTx> supplier;
-
-    @Mock
-    ODatabaseDocumentTx oDatabaseDocumentTx;
-
-    @Mock
-    GroupType groupType;
+    private GroupType groupType;
 
     private Repository initRepository() throws Exception {
         Repository repository = mock(Repository.class);
@@ -90,7 +78,7 @@ public class SizeBlobCountAttributesFacetImplTest extends TestSupport{
         when(repository.getConfiguration()).thenReturn(configuration);
     }
 
-    private Repository initRepositoryWithoutStorageFacet() throws Exception {
+    private Repository initRepositoryWithoutStorageFacet() {
         Repository repository = mock(Repository.class);
         Map<String, Map<String, Object>> attributes = new HashMap<>();
         Map<String, Object> valueOfFirstKey = new HashMap<>();
@@ -152,21 +140,14 @@ public class SizeBlobCountAttributesFacetImplTest extends TestSupport{
     }
 
     private Asset mockAsset(String name, long size) {
-        return mockAsset(name, size, true);
-    }
-
-    private Asset mockAsset(String name, long size, boolean hasBlob) {
         Asset asset = mock(Asset.class);
         when(asset.name()).thenReturn(name);
         when(asset.size()).thenReturn(size);
-        if (hasBlob) {
-            when(asset.blobRef()).thenReturn(blobRef);
-        }
         return asset;
     }
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
     }
 
     @Test
@@ -190,8 +171,12 @@ public class SizeBlobCountAttributesFacetImplTest extends TestSupport{
         /**
          * Return 0 for size and 0 for blobcount
          */
-        assertThat(sizeBlobCountAttributesFacet.blobCount()).isEqualTo(0);
-        assertThat(sizeBlobCountAttributesFacet.size()).isEqualTo(0);
+        assertThat(repository.getConfiguration().getAttributes().
+                get(SizeBlobCountAttributesFacetImpl.SIZE_BLOB_COUNT_KEY_ATTRIBUTES)
+                .get(SizeBlobCountAttributesFacetImpl.SIZE_KEY)).isEqualTo(0L);
+        assertThat(repository.getConfiguration().getAttributes().
+                get(SizeBlobCountAttributesFacetImpl.SIZE_BLOB_COUNT_KEY_ATTRIBUTES)
+                .get(SizeBlobCountAttributesFacetImpl.BLOB_COUNT_KEY)).isEqualTo(0L);
     }
 
     @Test
@@ -213,8 +198,12 @@ public class SizeBlobCountAttributesFacetImplTest extends TestSupport{
         /**
          * Return 0 for size and 0 for blobcount
          */
-        assertThat(sizeBlobCountAttributesFacet.blobCount()).isEqualTo(0);
-        assertThat(sizeBlobCountAttributesFacet.size()).isEqualTo(0);
+        assertThat(repository.getConfiguration().getAttributes().
+                get(SizeBlobCountAttributesFacetImpl.SIZE_BLOB_COUNT_KEY_ATTRIBUTES)
+                .get(SizeBlobCountAttributesFacetImpl.SIZE_KEY)).isEqualTo(0L);
+        assertThat(repository.getConfiguration().getAttributes().
+                get(SizeBlobCountAttributesFacetImpl.SIZE_BLOB_COUNT_KEY_ATTRIBUTES)
+                .get(SizeBlobCountAttributesFacetImpl.BLOB_COUNT_KEY)).isEqualTo(0L);
     }
 
     @Test
@@ -245,8 +234,12 @@ public class SizeBlobCountAttributesFacetImplTest extends TestSupport{
         /**
          * Return the size and the blob count of the two assets
          */
-        assertThat(sizeBlobCountAttributesFacet.blobCount()).isEqualTo(2);
-        assertThat(sizeBlobCountAttributesFacet.size()).isEqualTo(4000);
+        assertThat(repository.getConfiguration().getAttributes().
+                get(SizeBlobCountAttributesFacetImpl.SIZE_BLOB_COUNT_KEY_ATTRIBUTES)
+                .get(SizeBlobCountAttributesFacetImpl.SIZE_KEY)).isEqualTo(4000L);
+        assertThat(repository.getConfiguration().getAttributes().
+                get(SizeBlobCountAttributesFacetImpl.SIZE_BLOB_COUNT_KEY_ATTRIBUTES)
+                .get(SizeBlobCountAttributesFacetImpl.BLOB_COUNT_KEY)).isEqualTo(2L);
     }
 
     @Test
@@ -281,7 +274,11 @@ public class SizeBlobCountAttributesFacetImplTest extends TestSupport{
         /**
          * Return the size and the blob count of the group repository
          */
-        assertThat(sizeBlobCountAttributesFacet.size()).isEqualTo(0);
-        assertThat(sizeBlobCountAttributesFacet.blobCount()).isEqualTo(0);
+        assertThat(groupRepository.getConfiguration().getAttributes().
+                get(SizeBlobCountAttributesFacetImpl.SIZE_BLOB_COUNT_KEY_ATTRIBUTES)
+                .get(SizeBlobCountAttributesFacetImpl.SIZE_KEY)).isEqualTo(0L);
+        assertThat(groupRepository.getConfiguration().getAttributes().
+                get(SizeBlobCountAttributesFacetImpl.SIZE_BLOB_COUNT_KEY_ATTRIBUTES)
+                .get(SizeBlobCountAttributesFacetImpl.BLOB_COUNT_KEY)).isEqualTo(0L);
     }
 }

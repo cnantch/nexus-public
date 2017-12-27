@@ -67,9 +67,6 @@ class RawGroupRecipe
   Provider<GroupFacet> groupFacet
 
   @Inject
-  Provider<SizeBlobCountAttributesFacet> sizeBlobCountAttributesFacet
-
-  @Inject
   ExceptionHandler exceptionHandler
 
   @Inject
@@ -98,7 +95,6 @@ class RawGroupRecipe
     repository.attach(attributesFacet.get())
     repository.attach(configure(viewFacet.get()))
     repository.attach(groupFacet.get())
-    repository.attach(sizeBlobCountAttributesFacet.get())
   }
 
   /**

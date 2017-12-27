@@ -88,9 +88,6 @@ class RawProxyRecipe
   Provider<SearchFacet> searchFacet
 
   @Inject
-  Provider<SizeBlobCountAttributesFacet> sizeBlobCountAttributesFacet
-
-  @Inject
   Provider<PurgeUnusedFacet> purgeUnusedFacet
 
   @Inject
@@ -143,7 +140,6 @@ class RawProxyRecipe
     repository.attach(componentMaintenance.get())
     repository.attach(searchFacet.get())
     repository.attach(purgeUnusedFacet.get())
-    repository.attach(sizeBlobCountAttributesFacet.get())
   }
 
   /**

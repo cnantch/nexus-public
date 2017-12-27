@@ -91,7 +91,6 @@ extends MavenRecipeSupport
     repository.attach(mavenPurgeSnapshotsFacet.get())
     repository.attach(removeSnapshotsFacet.get())
     repository.attach(configure(viewFacet.get()))
-    repository.attach(sizeBlobCountAttributesfacet.get())
   }
 
   /**

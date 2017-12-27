@@ -3,6 +3,7 @@ package org.sonatype.nexus.repository.sizeblobcount.internal;
 import org.sonatype.nexus.formfields.FormField;
 import org.sonatype.nexus.formfields.RepositoryCombobox;
 import org.sonatype.nexus.repository.sizeblobcount.SizeBlobCountAttributesFacet;
+import org.sonatype.nexus.repository.types.HostedType;
 import org.sonatype.nexus.scheduling.TaskDescriptorSupport;
 
 import javax.inject.Inject;
@@ -32,7 +33,7 @@ public class SizeBlobCountAttributesCalculatingTaskDescriptor extends TaskDescri
                         "Repository",
                         "Select the repository which you will calculate the size and the blob count",
                         FormField.MANDATORY
-                ).includingAnyOfFacets(SizeBlobCountAttributesFacet.class).includeAnEntryForAllRepositories()
+                ).includingAnyOfFacets(SizeBlobCountAttributesFacet.class).includingAnyOfTypes(HostedType.NAME).includeAnEntryForAllRepositories()
         );
     }
 }

@@ -23,6 +23,7 @@ import org.sonatype.nexus.repository.maven.internal.MavenSecurityFacet
 import org.sonatype.nexus.repository.maven.internal.VersionPolicyHandler
 import org.sonatype.nexus.repository.maven.internal.hosted.*
 import org.sonatype.nexus.repository.search.SearchFacet
+import org.sonatype.nexus.repository.sizeblobcount.SizeBlobCountAttributesFacet
 import org.sonatype.nexus.repository.types.HostedType
 import org.sonatype.nexus.repository.view.ConfigurableViewFacet
 import org.sonatype.nexus.repository.view.Router
@@ -74,6 +75,10 @@ class Maven2HostedRecipe
   
   @Inject
   Provider<RemoveSnapshotsFacet> removeSnapshotsFacet
+
+
+  @Inject
+  Provider<SizeBlobCountAttributesFacet> sizeBlobCountAttributesfacet
 
   @Inject
   Maven2HostedRecipe(@Named(HostedType.NAME) final Type type,

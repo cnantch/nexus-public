@@ -86,9 +86,6 @@ abstract class MavenRecipeSupport
 
   final Provider<SecurityFacet> securityFacet
 
-  @Inject
-  Provider<SizeBlobCountAttributesFacet> sizeBlobCountAttributesfacet
-
   MavenRecipeSupport(Type type, Format format, MavenPathParser mavenPathParser, Provider<SecurityFacet> securityFacet) {
     super(type, format)
     this.mavenPathParser = mavenPathParser
