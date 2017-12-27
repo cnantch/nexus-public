@@ -470,4 +470,16 @@ class TaskComponent
       throw e
     }
   }
+
+  /**
+   * Retrieve a list of scheduled tasks.
+   */
+  @DirectMethod
+  @Timed
+  @ExceptionMetered
+  @RequiresPermissions('nexus:tasks:readOptions')
+  List<String> readOptionsPurgeTask()
+  {
+        return ['version', 'dateRelease']
+  }
 }

@@ -1,10 +1,10 @@
 package org.sonatype.nexus.repository.maven.tasks;
 
-import org.sonatype.nexus.formfields.FormField;
-import org.sonatype.nexus.formfields.NumberTextFormField;
-import org.sonatype.nexus.formfields.RepositoryCombobox;
-import org.sonatype.nexus.formfields.StringTextFormField;
+import org.sonatype.nexus.formfields.*;
 import org.sonatype.nexus.repository.maven.PurgeUnusedReleasesFacet;
+import org.sonatype.nexus.repository.maven.VersionPolicy;
+import org.sonatype.nexus.repository.maven.internal.Maven2Format;
+import org.sonatype.nexus.repository.types.HostedType;
 import org.sonatype.nexus.scheduling.TaskDescriptorSupport;
 
 import javax.inject.Named;
@@ -16,7 +16,7 @@ import static org.sonatype.nexus.repository.maven.tasks.PurgeMavenUnusedReleases
 /**
  * Task descriptor for {@link PurgeMavenUnusedReleasesTask}.
  *
- * @since 3.0
+ * @since 3.7.0
  */
 @Named
 @Singleton
@@ -39,18 +39,27 @@ public class PurgeMavenUnusedReleasesTaskDescriptor  extends TaskDescriptorSuppo
                 new RepositoryCombobox(
                         REPOSITORY_NAME_FIELD_ID,
                         "Repository",
-                        "Select the repository to purge unused releases versions from",
+                        "Select the hosted maven repository to purge unused releases versions from",
                         FormField.MANDATORY
-                ).includingAnyOfFacets(PurgeUnusedReleasesFacet.class).includeAnEntryForAllRepositories(),
+                ).includingAnyOfFacets(PurgeUnusedReleasesFacet.class).includingAnyOfFormats(Maven2Format.NAME)
+                        .includingAnyOfTypes(HostedType.NAME).excludingAnyOfVersionPolicies(VersionPolicy.SNAPSHOT.name())
+                .includeAnEntryForAllRepositories(),
                 new StringTextFormField(GROUP_ID, "Group Id of the release",
                         "Enter the groupId of the release you want to purge",
                         true),
                 new StringTextFormField(ARTIFACT_ID, "Artifact Id of the release",
                         "Enter the artifactId of the release you want to purge",
                         true),
+                new ComboboxFormField(OPTION_FOR_PURGE_ID,
+                        "Option used for the purge",
+                            "Select the option which going to be used for the purge",
+                            false)
+                        .withStoreApi("coreui_Task.readOptionsPurgeTask")
+                .withIdMapping("version").withNameMapping("Version")
+                .withIdMapping("dateRelease").withNameMapping("Date of Release"),
                 new NumberTextFormField(
                         NUMBER_RELEASES_TO_KEEP,
-                        "Last used in days",
+                        "Number of releases",
                         "Number of releases to keep",
                         FormField.MANDATORY
                 ).withInitialValue(LAST_USED_INIT_VALUE).withMinimumValue(LAST_USED_MIN_VALUE)

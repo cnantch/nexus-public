@@ -30,8 +30,8 @@ class PurgeMavenUnusedReleasesTaskTest  extends TestSupport {
         task = new PurgeMavenUnusedReleasesTask(new HostedType(),
                 new Maven2Format())
         TaskConfiguration configuration = new TaskConfiguration()
-        configuration.setId(PurgeMavenUnusedSnapshotsTaskDescriptor.TYPE_ID)
-        configuration.setTypeId(PurgeMavenUnusedSnapshotsTaskDescriptor.TYPE_ID)
+        configuration.setId(PurgeMavenUnusedReleasesTaskDescriptor.TYPE_ID)
+        configuration.setTypeId(PurgeMavenUnusedReleasesTaskDescriptor.TYPE_ID)
         configuration.setString(RepositoryTaskSupport.REPOSITORY_NAME_FIELD_ID, "my-maven-repo")
         configuration.setString(PurgeMavenUnusedReleasesTask.GROUP_ID, "org.edf")
         configuration.setString(PurgeMavenUnusedReleasesTask.ARTIFACT_ID, "demoNexus")

@@ -1,27 +1,29 @@
 package org.sonatype.nexus.repository.maven.internal;
 
-import com.orientechnologies.orient.core.id.ORID;
+import com.google.common.collect.Lists;
 import org.sonatype.nexus.common.collect.NestedAttributesMap;
+import org.sonatype.nexus.common.stateguard.Guarded;
 import org.sonatype.nexus.repository.FacetSupport;
-import org.sonatype.nexus.repository.Type;
 import org.sonatype.nexus.repository.maven.MavenFacet;
 import org.sonatype.nexus.repository.maven.PurgeUnusedReleasesFacet;
-import org.sonatype.nexus.repository.maven.internal.hosted.metadata.MetadataRebuilder;
 import org.sonatype.nexus.repository.maven.internal.hosted.metadata.MetadataUtils;
-import org.sonatype.nexus.repository.storage.*;
-import org.sonatype.nexus.repository.types.HostedType;
+import org.sonatype.nexus.repository.storage.Component;
+import org.sonatype.nexus.repository.storage.StorageFacet;
+import org.sonatype.nexus.repository.storage.StorageTx;
+import org.sonatype.nexus.repository.transaction.TransactionalDeleteBlob;
+import org.sonatype.nexus.repository.transaction.TransactionalStoreMetadata;
+import org.sonatype.nexus.scheduling.CancelableHelper;
+import org.sonatype.nexus.scheduling.TaskInterruptedException;
 import org.sonatype.nexus.transaction.UnitOfWork;
 
-import javax.inject.Inject;
 import javax.inject.Named;
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static org.sonatype.nexus.orient.entity.AttachedEntityHelper.*;
-import static org.sonatype.nexus.repository.maven.internal.Attributes.P_ARTIFACT_ID;
-import static org.sonatype.nexus.repository.maven.internal.Attributes.P_BASE_VERSION;
-import static org.sonatype.nexus.repository.maven.internal.Attributes.P_GROUP_ID;
+import static org.sonatype.nexus.repository.FacetSupport.State.STARTED;
+import static org.sonatype.nexus.repository.maven.internal.Attributes.*;
 
 @Named
 public class PurgeUnusedReleasesFacetImpl extends FacetSupport
@@ -29,35 +31,27 @@ public class PurgeUnusedReleasesFacetImpl extends FacetSupport
 
 
     public static final String MESSAGE_PURGE_NOT_EXECUTED = "TODO message to tell the purge cannot be done";
-    public static final int PAGINATION_LIMIT = 5;
-    private final ComponentEntityAdapter componentEntityAdapter;
-    private final MetadataRebuilder metadataRebuilder;
-    private final Type hostedType;
-    private ORID lastComponentRecordId;
+
+    public static final int PAGINATION_LIMIT = 10;
 
 
-    @Inject
-    PurgeUnusedReleasesFacetImpl(final ComponentEntityAdapter componentEntityAdapter,
-                                 final MetadataRebuilder metadataRebuilder,
-                                 @Named(HostedType.NAME) final Type hostedType
-    )
-    {
-        this.componentEntityAdapter = checkNotNull(componentEntityAdapter);
-        this.metadataRebuilder = checkNotNull(metadataRebuilder);
-        this.hostedType = checkNotNull(hostedType);
-    }
+    private String lastComponentVersion;
 
 
     @Override
+    @Guarded(by = STARTED)
     public void purgeUnusedReleases(String groupId, String artifactId, String option, int numberOfReleasesToKeep) {
-        long nbComponents = countTotalReleases(groupId, artifactId);
-        long nbReleasesToPurge = nbComponents - numberOfReleasesToKeep;
-        if (nbReleasesToPurge <= 0) {
-            log.debug(MESSAGE_PURGE_NOT_EXECUTED);
-        } else {
-            processAsHosted(groupId, artifactId, option, numberOfReleasesToKeep, nbReleasesToPurge);
-        }
-
+        TransactionalStoreMetadata.operation.withDb(facet(StorageFacet.class).txSupplier()).call(() -> {
+            long nbComponents = countTotalReleases(groupId, artifactId);
+            long nbReleasesToPurge = nbComponents - numberOfReleasesToKeep;
+            if (nbReleasesToPurge <= 0) {
+                log.info(MESSAGE_PURGE_NOT_EXECUTED);
+            } else {
+                log.info("Number of releases to purge {} ", nbReleasesToPurge);
+                processAsHosted(groupId, artifactId, option, nbReleasesToPurge, numberOfReleasesToKeep);
+            }
+            return null;
+        });
     }
 
     /**
@@ -65,25 +59,29 @@ public class PurgeUnusedReleasesFacetImpl extends FacetSupport
      * @param groupId - Group Id of the component
      * @param artifactId - Artifact Id of the component
      * @param option - Option used to order by for purge
-     * @param numberOfReleasesToKeep
      * @param nbReleasesToPurge
+     * @param numberReleasesToKeep
      */
-    public void processAsHosted(String groupId, String artifactId, String option, int numberOfReleasesToKeep, long nbReleasesToPurge) {
+    public void processAsHosted(String groupId, String artifactId, String option, long nbReleasesToPurge, long numberReleasesToKeep) {
         //First retrieve the last component of the releases which have been not purged
-        lastComponentRecordId = getLastComponentRecordId(retrieveReleases(groupId, artifactId, option, numberOfReleasesToKeep));
+        lastComponentVersion = getLastComponentVersion(retrieveReleases(groupId, artifactId, option, nbReleasesToPurge));
         StorageTx tx = UnitOfWork.currentTx();
         //
         int limit = PAGINATION_LIMIT;
         int n = 0;
 
-        while (n < nbReleasesToPurge) {
-            List<Component> components = retrieveReleases(groupId, artifactId, option, limit, lastComponentRecordId);
+        while (n < nbReleasesToPurge && !isCanceled()) {
+            List<Component> components = retrieveReleases(groupId, artifactId, option, limit, lastComponentVersion, "desc");
             int totalComponents = components.size();
-            log.debug("{} components will be purged ", totalComponents);
+            log.info("{} components will be purged ", totalComponents);
+            lastComponentVersion = getLastComponentVersion(components);
+
             for (Component component : components) {
+                if (isCanceled()) {
+                    break;
+                }
                 deleteComponent(component);
             }
-            lastComponentRecordId = getLastComponentRecordId(components);
 
             tx.commit();
             tx.begin();
@@ -93,8 +91,8 @@ public class PurgeUnusedReleasesFacetImpl extends FacetSupport
     }
 
 
-    public List retrieveReleases(String groupId, String artifactId, String option, int pagination) {
-        return retrieveReleases(groupId, artifactId, option, pagination, null);
+    public List retrieveReleases(String groupId, String artifactId, String option, long pagination) {
+        return retrieveReleases(groupId, artifactId, option, pagination, null, "asc");
     }
 
     /**
@@ -103,20 +101,21 @@ public class PurgeUnusedReleasesFacetImpl extends FacetSupport
      * @param artifactId
      * @param option
      * @param pagination
-     * @param lastComponentId
+     * @param lastComponentVersion
+     * @param order
      * @return
      */
-    public List<Component> retrieveReleases(String groupId, String artifactId, String option, int pagination, ORID lastComponentId) {
+    public List<Component> retrieveReleases(String groupId, String artifactId, String option, long pagination, String lastComponentVersion, String order) {
         if (optionalFacet(StorageFacet.class).isPresent()) {
             StorageTx tx = UnitOfWork.currentTx();
 
-            QueryPurgeReleasesBuilder queryPurgeReleasesBuilder = QueryPurgeReleasesBuilder.buildQuery(getRepository(), tx, groupId, artifactId, option, lastComponentId, pagination, false);
+            QueryPurgeReleasesBuilder queryPurgeReleasesBuilder = QueryPurgeReleasesBuilder.buildQuery(getRepository(), tx, groupId, artifactId, option, lastComponentVersion, pagination, false, order);
 
-            log.debug("Query executed {} ", queryPurgeReleasesBuilder.toString());
+            log.info("Query executed {} ", queryPurgeReleasesBuilder.toString());
 
             Iterable<Component> components = tx.findComponents(queryPurgeReleasesBuilder.getWhereClause(),
                     queryPurgeReleasesBuilder.getQueryParams(), Arrays.asList(getRepository()), queryPurgeReleasesBuilder.getQuerySuffix());
-            return (List) components;
+            return Lists.newArrayList(components);
         }
         return Collections.emptyList();
     }
@@ -128,24 +127,25 @@ public class PurgeUnusedReleasesFacetImpl extends FacetSupport
      * @return
      */
     public long countTotalReleases(String groupId, String artifactId) {
+        long nbComponents = 0L;
         if (optionalFacet(StorageFacet.class).isPresent()) {
             StorageTx tx = UnitOfWork.currentTx();
             QueryPurgeReleasesBuilder queryPurgeReleasesBuilder = QueryPurgeReleasesBuilder.buildQueryForCount(getRepository(),
                     tx,
                     groupId,
                     artifactId);
-            Long nbComponents = tx.countComponents(queryPurgeReleasesBuilder.getWhereClause(),
+            nbComponents = tx.countComponents(queryPurgeReleasesBuilder.getWhereClause(),
                     queryPurgeReleasesBuilder.getQueryParams(),
                     Arrays.asList(getRepository()), queryPurgeReleasesBuilder.getQuerySuffix());
-            return nbComponents;
         }
-        return 0L;
+        log.info("Total number of releases components for {} {} : {} ", groupId, artifactId, nbComponents);
+        return nbComponents;
     }
 
 
-
+    @TransactionalDeleteBlob
     private String deleteComponent(final Component component) {
-        log.debug("Deleting unused released component {}", component);
+        log.info("Deleting unused released component {}", component);
         MavenFacet facet = facet(MavenFacet.class);
         final StorageTx tx = UnitOfWork.currentTx();
         tx.deleteComponent(component);
@@ -168,8 +168,18 @@ public class PurgeUnusedReleasesFacetImpl extends FacetSupport
         return groupId;
     }
 
-    public ORID getLastComponentRecordId(List<Component> components) {
-        return id(components.get(components.size() - 1));
+    public String getLastComponentVersion(List<Component> components) {
+        return components.get(components.size() - 1).version();
+    }
+
+    private boolean isCanceled() {
+        try {
+            CancelableHelper.checkCancellation();
+            return false;
+        } catch (TaskInterruptedException e) {
+            log.warn("Purge unused Maven releases job is canceled");
+            return true;
+        }
     }
 
 }

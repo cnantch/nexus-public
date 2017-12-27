@@ -25,7 +25,7 @@ public class QueryPurgeReleasesBuilder {
     }
 
 
-    public static QueryPurgeReleasesBuilder buildQuery(Repository repository, StorageTx tx, String groupId, String artifactId, String option, ORID lastComponentId, Integer pagination, Boolean isCount) {
+    public static QueryPurgeReleasesBuilder buildQuery(Repository repository, StorageTx tx, String groupId, String artifactId, String option, String lastComponentVersion, Long pagination, Boolean isCount, String order) {
         Map<String, Object> queryParameters = new HashMap<>();
         ORID bucketId = id(tx.findBucket(repository));
         queryParameters.put("bucketId", bucketId);
@@ -33,22 +33,23 @@ public class QueryPurgeReleasesBuilder {
         queryParameters.put("artifactId", artifactId);
         queryParameters.put("criteriaSnapshot", "%SNAPSHOT%");
         String whereClause = " ";
-        if (lastComponentId != null) {
-            queryParameters.put("lastComponentId", lastComponentId);
-            whereClause += " @rid > :lastComponentId and ";
+        if (lastComponentVersion != null) {
+            queryParameters.put("lastComponentVersion", lastComponentVersion);
+            whereClause += " version <= :lastComponentVersion and ";
         }
         StringBuilder querySuffixBuilder = new StringBuilder("");
         if (!isCount) {
             if (VERSION_OPTION.equals(option)) {
-                querySuffixBuilder.append("order by attributes.maven2.baseVersion desc");
+                querySuffixBuilder.append("order by attributes.maven2.baseVersion ");
             } else if (DATE_RELEASE_OPTION.equals(option)) {
-                querySuffixBuilder.append("order by last_updated desc");
+                querySuffixBuilder.append("order by last_updated ");
             }
+            querySuffixBuilder.append(order);
         }
         querySuffixBuilder.append(" limit ");
         querySuffixBuilder.append(pagination);
 
-        whereClause += "bucket = :bucketId and attributes.maven2.groupId = :groupId " +
+        whereClause += "bucket = :bucketId and attributes.maven2.groupId = :groupId and " +
                 " attributes.maven2.artifactId = :artifactId and not(attributes.maven2.baseVersion.toUpperCase() like :criteriaSnapshot)";
 
         return new QueryPurgeReleasesBuilder(queryParameters, whereClause, isCount ? null : querySuffixBuilder.toString());
@@ -61,7 +62,7 @@ public class QueryPurgeReleasesBuilder {
                 null,
                 null,
                 null,
-                true);
+                true, null);
     }
 
     public Map<String, Object> getQueryParams() {

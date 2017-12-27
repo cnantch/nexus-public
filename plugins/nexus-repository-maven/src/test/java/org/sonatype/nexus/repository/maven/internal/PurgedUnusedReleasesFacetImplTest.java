@@ -2,7 +2,6 @@ package org.sonatype.nexus.repository.maven.internal;
 
 import com.google.common.base.Supplier;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import org.joda.time.DateTime;
@@ -11,7 +10,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Matchers;
 import org.mockito.Mock;
-import org.slf4j.Logger;
 import org.sonatype.goodies.testsupport.TestSupport;
 import org.sonatype.nexus.common.collect.NestedAttributesMap;
 import org.sonatype.nexus.common.entity.EntityMetadata;
@@ -20,31 +18,21 @@ import org.sonatype.nexus.orient.entity.EntityAdapter;
 import org.sonatype.nexus.repository.Repository;
 import org.sonatype.nexus.repository.config.Configuration;
 import org.sonatype.nexus.repository.maven.MavenFacet;
-import org.sonatype.nexus.repository.maven.internal.hosted.metadata.MetadataRebuilder;
 import org.sonatype.nexus.repository.storage.*;
-import org.sonatype.nexus.repository.types.HostedType;
 import org.sonatype.nexus.transaction.UnitOfWork;
 
 import java.util.*;
 
 import static org.fest.assertions.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
-import static org.sonatype.nexus.repository.maven.internal.QueryPurgeReleasesBuilder.*;
+import static org.sonatype.nexus.repository.maven.internal.PurgeUnusedReleasesFacetImpl.PAGINATION_LIMIT;
+import static org.sonatype.nexus.repository.maven.internal.QueryPurgeReleasesBuilder.VERSION_OPTION;
 
 public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
 
     public static final String GROUP_ID = "org.edf";
 
     public static final String ARTIFACT_ID = "demoNexus";
-
-    @Mock
-    ComponentEntityAdapter componentEntityAdapter;
-
-    @Mock
-    MetadataRebuilder metadataRebuilder;
-
-    @Mock
-    HostedType hostedType;
 
     @Mock
     StorageTx storageTx;
@@ -80,15 +68,17 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
     @Mock
     private ODatabaseDocumentTx oDatabaseDocumentTx;
 
-    private void initFirstRepository() {
+    private void initFirstRepository() throws Exception {
         when(configuration.getRecipeName()).thenReturn("maven2-hosted");
         when(repository.getName()).thenReturn("my-first-repo");
         when(repository.getConfiguration()).thenReturn(configuration);
         when(repository.getFormat()).thenReturn(maven2Format);
+        repository.attach(storageFacet);
         when(repository.optionalFacet(StorageFacet.class)).thenReturn(Optional.of(storageFacet));
         when(repository.facet(StorageFacet.class)).thenReturn(storageFacet);
 
-
+        when(storageFacet.txSupplier()).thenReturn(supplier);
+        when(storageFacet.txSupplier().get()).thenReturn(storageTx);
 
         //Bucket of the repository
         when(storageTx.findBucket(repository)).thenReturn(bucket);
@@ -209,8 +199,7 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
 
     @Before
     public void setUp() throws Exception {
-        facet = new PurgeUnusedReleasesFacetImpl(componentEntityAdapter,
-                metadataRebuilder, hostedType);
+        facet = new PurgeUnusedReleasesFacetImpl();
 
         facet.attach(repository);
 
@@ -242,8 +231,8 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
     }
 
     @Test
-    public void should_return_the_last_record_id_of_the_component_in_a_component_list() {
-        ORID lastComponentORid;
+    public void should_return_the_last_record_id_of_the_component_in_a_component_list() throws Exception {
+        String lastComponentVersion;
         initFirstRepository();
         List<Component> components = Arrays.asList(secondComponent, thirdComponent, fourthComponent);
         when(storageTx.findComponents(Matchers.any(String.class),
@@ -251,18 +240,13 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
                 Matchers.any(Iterable.class),
                 Matchers.anyString()
         )).thenReturn(components);
-        ORecordId orID = new ORecordId(22, 1);
-        EntityAdapter owner = mock(EntityAdapter.class);
-        ODocument document = mock(ODocument.class);
-        when(document.getIdentity()).thenReturn(orID);
-        EntityMetadata entityMetadata = new AttachedEntityMetadata(owner, document);
-        when(fourthComponent.getEntityMetadata()).thenReturn(entityMetadata);
+        when(fourthComponent.version()).thenReturn("2.4");
 
         //When
-        lastComponentORid = facet.getLastComponentRecordId(components);
+        lastComponentVersion = facet.getLastComponentVersion(components);
 
         //Then
-        assertThat(lastComponentORid).isEqualTo(new ORecordId(22, 1));
+        assertThat(lastComponentVersion).isEqualTo("2.4");
     }
 
 
@@ -288,7 +272,7 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
     }
 
     @Test
-    public void TODO_test_purgeUnusedReleases() {
+    public void test_the_purge_of_unused_releases_when_the_number_of_releases_to_keep_is_lower_than_the_total_components() throws Exception {
         //Given
         initFirstRepository();
         when(repository.facet(MavenFacet.class)).thenReturn(mavenFacet);
@@ -321,13 +305,13 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
         when(storageTx.findComponents(Matchers.any(String.class),
                 Matchers.any(Map.class),
                 Matchers.any(Iterable.class),
-                Matchers.eq("order by attributes.maven2.baseVersion desc limit 6")
+                Matchers.eq("order by attributes.maven2.baseVersion asc limit " + PAGINATION_LIMIT)
         )).thenReturn(components);
         when(storageTx.findComponents(Matchers.any(String.class),
                 Matchers.any(Map.class),
                 Matchers.any(Iterable.class),
-                Matchers.eq("order by attributes.maven2.baseVersion desc limit 5")
-        )).thenReturn(components.subList(0,5));
+                Matchers.eq("order by attributes.maven2.baseVersion desc limit " + PAGINATION_LIMIT)
+        )).thenReturn(components.subList(0,PAGINATION_LIMIT));
         orID = new ORecordId(22, 1);
         when(document.getIdentity()).thenReturn(orID);
         when(fourthComponent.getEntityMetadata()).thenReturn(entityMetadata);
@@ -347,11 +331,11 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
         verify(storageTx, times(2)).findComponents(Matchers.any(String.class),
                 Matchers.any(Map.class),
                 Matchers.any(Iterable.class),
-                Matchers.eq("order by attributes.maven2.baseVersion desc limit 5"));
+                Matchers.anyString());
     }
 
     @Test
-    public void TODO_test_purgeUnusedReleases_DO_NOTHING() {
+    public void test_the_purge_of_unused_releases_when_the_number_of_releases_to_keep_is_higher_than_the_total_components() throws Exception {
         //Given
         initFirstRepository();
 
