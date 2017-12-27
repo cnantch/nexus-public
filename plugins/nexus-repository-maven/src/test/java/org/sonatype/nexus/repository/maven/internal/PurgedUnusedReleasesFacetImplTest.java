@@ -30,24 +30,24 @@ import static org.sonatype.nexus.repository.maven.internal.QueryPurgeReleasesBui
 
 public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
 
-    public static final String GROUP_ID = "org.edf";
+    private static final String GROUP_ID = "org.edf";
 
-    public static final String ARTIFACT_ID = "demoNexus";
-
-    @Mock
-    StorageTx storageTx;
+    private static final String ARTIFACT_ID = "demoNexus";
 
     @Mock
-    StorageFacet storageFacet;
+    private StorageTx storageTx;
 
     @Mock
-    MavenFacet mavenFacet;
+    private StorageFacet storageFacet;
 
     @Mock
-    Repository repository;
+    private MavenFacet mavenFacet;
 
     @Mock
-    Maven2Format maven2Format;
+    private Repository repository;
+
+    @Mock
+    private Maven2Format maven2Format;
 
     @Mock
     private Configuration configuration;
@@ -167,7 +167,7 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
         Asset firstassetOfFourthComponent = mock(Asset.class);
         when(firstassetOfFourthComponent.name()).thenReturn("org/edf/demoNexus/1.0/demoNexus-1.3.jar");
 
-        when(storageTx.browseAssets(thirdComponent)).thenReturn(Arrays.asList(firstassetOfFourthComponent));
+        when(storageTx.browseAssets(thirdComponent)).thenReturn(Collections.singletonList(firstassetOfFourthComponent));
 
 
         when(storageTx.browseComponents(bucket)).thenReturn(Arrays.asList(firstComponent, secondComponent,
@@ -178,7 +178,7 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
     }
 
 
-    public Component mockComponent(String version, DateTime lastUpdatedDateTime, String baseVersion) {
+    private Component mockComponent(String version, DateTime lastUpdatedDateTime) {
         Component component = mock(Component.class);
         when(component.group()).thenReturn(GROUP_ID);
         when(component.version()).thenReturn(version);
@@ -186,7 +186,7 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
         when(component.name()).thenReturn(ARTIFACT_ID);
         when(component.lastUpdated()).thenReturn(lastUpdatedDateTime);
         Map<String, Object> firstAttributesMap = new HashMap<>();
-        firstAttributesMap.put("baseVersion", baseVersion);
+        firstAttributesMap.put("baseVersion", "1.0-SNAPSHOT");
         firstAttributesMap.put("groupId", GROUP_ID);
         firstAttributesMap.put("artifactId", ARTIFACT_ID);
         NestedAttributesMap firstAttributesComponent = new NestedAttributesMap("maven2", firstAttributesMap);
@@ -195,12 +195,10 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
         return component;
     }
 
-    PurgeUnusedReleasesFacetImpl facet;
+    private PurgeUnusedReleasesFacetImpl facet = new PurgeUnusedReleasesFacetImpl();
 
     @Before
     public void setUp() throws Exception {
-        facet = new PurgeUnusedReleasesFacetImpl();
-
         facet.attach(repository);
 
         when(storageTx.getDb()).thenReturn(oDatabaseDocumentTx);
@@ -209,7 +207,7 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() {
         UnitOfWork.end();
     }
 
@@ -264,7 +262,7 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
 
         //When
 
-        List<Component> components = facet.retrieveReleases(GROUP_ID, ARTIFACT_ID, "version", 10);
+        List components = facet.retrieveReleases(GROUP_ID, ARTIFACT_ID, "version", 10);
 
         //Then
         assertThat(components.size()).isEqualTo(3);
@@ -278,7 +276,7 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
         when(repository.facet(MavenFacet.class)).thenReturn(mavenFacet);
 
 
-        Component fifthComponent = mockComponent("1.0.5", new DateTime(2017, 12, 10, 23, 0, 0), "1.0-SNAPSHOT");
+        Component fifthComponent = mockComponent("1.0.5", new DateTime(2017, 12, 10, 23, 0, 0));
         ORecordId orID = new ORecordId(23, 1);
         EntityAdapter owner = mock(EntityAdapter.class);
         ODocument document = mock(ODocument.class);
@@ -286,21 +284,21 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
         EntityMetadata entityMetadata = new AttachedEntityMetadata(owner, document);
         when(fifthComponent.getEntityMetadata()).thenReturn(entityMetadata);
 
-        List<Component> components = Arrays.asList(mockComponent("1.0.1", new DateTime(2017, 12, 10, 23, 0, 0), "1.0-SNAPSHOT"),
-                mockComponent("1.0.2", new DateTime(2017, 12, 10, 23, 0, 0), "1.0-SNAPSHOT"),
-                mockComponent("1.0.3", new DateTime(2017, 12, 10, 23, 0, 0), "1.0-SNAPSHOT"),
-                mockComponent("1.0.4", new DateTime(2017, 12, 10, 23, 0, 0), "1.0-SNAPSHOT"),
+        List<Component> components = Arrays.asList(mockComponent("1.0.1", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("1.0.2", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("1.0.3", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("1.0.4", new DateTime(2017, 12, 10, 23, 0, 0)),
                 fifthComponent,
-                mockComponent("1.0.6", new DateTime(2017, 12, 10, 23, 0, 0), "1.0-SNAPSHOT"),
-                mockComponent("1.0.7", new DateTime(2017, 12, 10, 23, 0, 0), "1.0-SNAPSHOT"),
-                mockComponent("1.0.8", new DateTime(2017, 12, 10, 23, 0, 0), "1.0-SNAPSHOT"),
-                mockComponent("1.0.9", new DateTime(2017, 12, 10, 23, 0, 0), "1.0-SNAPSHOT"),
-                mockComponent("1.1.0", new DateTime(2017, 12, 10, 23, 0, 0), "1.0-SNAPSHOT"),
-                mockComponent("1.1.1", new DateTime(2017, 12, 10, 23, 0, 0), "1.0-SNAPSHOT"),
-                mockComponent("1.1.2", new DateTime(2017, 12, 10, 23, 0, 0), "1.0-SNAPSHOT"),
-                mockComponent("1.1.3", new DateTime(2017, 12, 10, 23, 0, 0), "1.0-SNAPSHOT"),
-                mockComponent("1.1.4", new DateTime(2017, 12, 10, 23, 0, 0), "1.0-SNAPSHOT"),
-                mockComponent("1.1.5", new DateTime(2017, 12, 10, 23, 0, 0), "1.0-SNAPSHOT"),
+                mockComponent("1.0.6", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("1.0.7", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("1.0.8", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("1.0.9", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("1.1.0", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("1.1.1", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("1.1.2", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("1.1.3", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("1.1.4", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("1.1.5", new DateTime(2017, 12, 10, 23, 0, 0)),
                 fourthComponent);
         when(storageTx.findComponents(Matchers.any(String.class),
                 Matchers.any(Map.class),
