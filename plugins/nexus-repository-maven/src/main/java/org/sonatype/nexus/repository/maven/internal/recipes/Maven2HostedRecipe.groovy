@@ -16,6 +16,7 @@ import org.sonatype.nexus.repository.Format
 import org.sonatype.nexus.repository.Repository
 import org.sonatype.nexus.repository.Type
 import org.sonatype.nexus.repository.maven.MavenPathParser
+import org.sonatype.nexus.repository.maven.PurgeUnusedReleasesFacet
 import org.sonatype.nexus.repository.maven.PurgeUnusedSnapshotsFacet
 import org.sonatype.nexus.repository.maven.RemoveSnapshotsFacet
 import org.sonatype.nexus.repository.maven.internal.Maven2Format
@@ -81,6 +82,9 @@ class Maven2HostedRecipe
   Provider<SizeBlobCountAttributesFacet> sizeBlobCountAttributesfacet
 
   @Inject
+  Provider<PurgeUnusedReleasesFacet> mavenPurgeReleasedFacet
+
+  @Inject
   Maven2HostedRecipe(@Named(HostedType.NAME) final Type type,
                      @Named(Maven2Format.NAME) final Format format,
                      @Named(Maven2Format.NAME) MavenPathParser mavenPathParser,
@@ -103,6 +107,7 @@ class Maven2HostedRecipe
     repository.attach(removeSnapshotsFacet.get())
     repository.attach(configure(viewFacet.get()))
     repository.attach(sizeBlobCountAttributesfacet.get())
+    repository.attach(mavenPurgeReleasedFacet.get())
   }
 
   private ViewFacet configure(final ConfigurableViewFacet facet) {
