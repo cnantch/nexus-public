@@ -18,12 +18,15 @@ import org.sonatype.nexus.transaction.UnitOfWork;
 
 import javax.inject.Named;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 
 import static org.sonatype.nexus.repository.FacetSupport.State.STARTED;
 import static org.sonatype.nexus.repository.maven.internal.Attributes.*;
+import static org.sonatype.nexus.repository.maven.internal.QueryPurgeReleasesBuilder.DATE_RELEASE_OPTION;
+import static org.sonatype.nexus.repository.maven.internal.QueryPurgeReleasesBuilder.VERSION_OPTION;
 
 @Named
 public class PurgeUnusedReleasesFacetImpl extends FacetSupport
@@ -42,10 +45,10 @@ public class PurgeUnusedReleasesFacetImpl extends FacetSupport
             long nbComponents = countTotalReleases(groupId, artifactId);
             long nbReleasesToPurge = nbComponents - numberOfReleasesToKeep;
             if (nbReleasesToPurge <= 0) {
-                log.info(MESSAGE_PURGE_NOT_EXECUTED);
+                log.debug(MESSAGE_PURGE_NOT_EXECUTED);
             } else {
-                log.info("Number of releases to purge {} ", nbReleasesToPurge);
-                processAsHosted(groupId, artifactId, option, nbReleasesToPurge);
+                log.debug("Number of releases to purge {} ", nbReleasesToPurge);
+                process(groupId, artifactId, option, nbReleasesToPurge);
             }
             return null;
         });
@@ -57,20 +60,27 @@ public class PurgeUnusedReleasesFacetImpl extends FacetSupport
      * @param artifactId - Artifact Id of the component
      * @param option - Option used to order by for purge
      */
-    private void processAsHosted(String groupId, String artifactId, String option, long nbReleasesToPurge) {
+    private void process(String groupId, String artifactId, String option, long nbReleasesToPurge) {
         //First retrieve the last component of the releases which have been not purged
-        String lastComponentVersion = getLastComponentVersion(retrieveReleases(groupId, artifactId, option, nbReleasesToPurge));
+        String lastComponentVersion = null;
+        Date lastReleaseDate = null;
+        List<Component> components = retrieveReleases(groupId, artifactId, option, nbReleasesToPurge);
+        if (VERSION_OPTION.equals(option)) {
+            lastComponentVersion = getLastComponentVersion(components);
+        } else if (DATE_RELEASE_OPTION.equals(option)) {
+            lastReleaseDate = getLastComponentReleaseDate(components);
+        }
         StorageTx tx = UnitOfWork.currentTx();
         //
         int n = 0;
 
         while (n < nbReleasesToPurge && !isCanceled()) {
-            List<Component> components = retrieveReleases(groupId, artifactId, option, PAGINATION_LIMIT, lastComponentVersion, "desc");
-            int totalComponents = components.size();
-            log.info("{} components will be purged ", totalComponents);
-            lastComponentVersion = getLastComponentVersion(components);
+            List<Component> filteredComponents = retrieveReleases(groupId, artifactId, option, PAGINATION_LIMIT, lastComponentVersion, lastReleaseDate, "desc");
+            int totalComponents = filteredComponents.size();
+            log.debug("{} components will be purged ", totalComponents);
+            lastComponentVersion = getLastComponentVersion(filteredComponents);
 
-            for (Component component : components) {
+            for (Component component : filteredComponents) {
                 if (isCanceled()) {
                     break;
                 }
@@ -84,13 +94,25 @@ public class PurgeUnusedReleasesFacetImpl extends FacetSupport
         }
     }
 
-    private List<Component> retrieveReleases(String groupId, String artifactId, String option, long pagination, String lastComponentVersion, String order) {
+    private List<Component> retrieveReleases(String groupId,
+                                             String artifactId,
+                                             String option,
+                                             long pagination,
+                                             String lastComponentVersion,
+                                             Date lastReleaseDate,
+                                             String order) {
         if (optionalFacet(StorageFacet.class).isPresent()) {
             StorageTx tx = UnitOfWork.currentTx();
+            QueryPurgeReleasesBuilder queryPurgeReleasesBuilder = null;
+            if (VERSION_OPTION.equals(option)) {
+                queryPurgeReleasesBuilder = QueryPurgeReleasesBuilder.buildQueryForVersionOption(getRepository(),
+                        tx, groupId, artifactId, lastComponentVersion, pagination, order);
+            } else if (DATE_RELEASE_OPTION.equals(option)) {
+                queryPurgeReleasesBuilder = QueryPurgeReleasesBuilder.buildQueryForReleaseDateOption(getRepository(),
+                        tx, groupId, artifactId, lastReleaseDate, pagination, order);
+            }
 
-            QueryPurgeReleasesBuilder queryPurgeReleasesBuilder = QueryPurgeReleasesBuilder.buildQuery(getRepository(), tx, groupId, artifactId, option, lastComponentVersion, pagination, false, order);
-
-            log.info("Query executed {} ", queryPurgeReleasesBuilder.toString());
+            log.debug("Query executed {} ", Objects.requireNonNull(queryPurgeReleasesBuilder).toString());
 
             Iterable<Component> components = tx.findComponents(queryPurgeReleasesBuilder.getWhereClause(),
                     queryPurgeReleasesBuilder.getQueryParams(), Collections.singletonList(getRepository()), queryPurgeReleasesBuilder.getQuerySuffix());
@@ -100,7 +122,7 @@ public class PurgeUnusedReleasesFacetImpl extends FacetSupport
     }
 
     public List retrieveReleases(String groupId, String artifactId, String option, long pagination) {
-        return retrieveReleases(groupId, artifactId, option, pagination, null, "asc");
+        return retrieveReleases(groupId, artifactId, option, pagination, null, null, "asc");
     }
 
     public long countTotalReleases(String groupId, String artifactId) {
@@ -146,6 +168,10 @@ public class PurgeUnusedReleasesFacetImpl extends FacetSupport
 
     public String getLastComponentVersion(List<Component> components) {
         return components.get(components.size() - 1).version();
+    }
+
+    public Date getLastComponentReleaseDate(List<Component> components) {
+        return components.get(components.size() - 1).lastUpdated().toDate();
     }
 
     private boolean isCanceled() {

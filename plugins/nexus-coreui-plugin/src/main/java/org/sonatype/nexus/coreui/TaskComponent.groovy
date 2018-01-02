@@ -472,14 +472,17 @@ class TaskComponent
   }
 
   /**
-   * Retrieve a list of scheduled tasks.
+   * Retrieve a list of versions used for the purge of maven releases
    */
   @DirectMethod
   @Timed
   @ExceptionMetered
-  @RequiresPermissions('nexus:tasks:readOptions')
-  List<String> readOptionsPurgeTask()
+  @RequiresPermissions('nexus:tasks:read')
+  List<TaskOptionPurgeXO> readOptionsPurgeTask()
   {
-        return ['version', 'dateRelease']
+        log.info("TODO read options purge task")
+        return [
+                new TaskOptionPurgeXO(name:  'version', description :"Version"),
+                new TaskOptionPurgeXO(name : 'dateRelease', description:  "Date de release")]
   }
 }

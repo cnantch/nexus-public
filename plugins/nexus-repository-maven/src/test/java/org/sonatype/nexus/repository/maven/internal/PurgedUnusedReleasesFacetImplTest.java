@@ -26,6 +26,7 @@ import java.util.*;
 import static org.fest.assertions.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 import static org.sonatype.nexus.repository.maven.internal.PurgeUnusedReleasesFacetImpl.PAGINATION_LIMIT;
+import static org.sonatype.nexus.repository.maven.internal.QueryPurgeReleasesBuilder.DATE_RELEASE_OPTION;
 import static org.sonatype.nexus.repository.maven.internal.QueryPurgeReleasesBuilder.VERSION_OPTION;
 
 public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
@@ -270,19 +271,13 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
     }
 
     @Test
-    public void test_the_purge_of_unused_releases_when_the_number_of_releases_to_keep_is_lower_than_the_total_components() throws Exception {
+    public void test_the_purge_of_unused_releases_when_the_option_is_version() throws Exception {
         //Given
         initFirstRepository();
         when(repository.facet(MavenFacet.class)).thenReturn(mavenFacet);
 
 
         Component fifthComponent = mockComponent("1.0.5", new DateTime(2017, 12, 10, 23, 0, 0));
-        ORecordId orID = new ORecordId(23, 1);
-        EntityAdapter owner = mock(EntityAdapter.class);
-        ODocument document = mock(ODocument.class);
-        when(document.getIdentity()).thenReturn(orID);
-        EntityMetadata entityMetadata = new AttachedEntityMetadata(owner, document);
-        when(fifthComponent.getEntityMetadata()).thenReturn(entityMetadata);
 
         List<Component> components = Arrays.asList(mockComponent("1.0.1", new DateTime(2017, 12, 10, 23, 0, 0)),
                 mockComponent("1.0.2", new DateTime(2017, 12, 10, 23, 0, 0)),
@@ -299,30 +294,72 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
                 mockComponent("1.1.3", new DateTime(2017, 12, 10, 23, 0, 0)),
                 mockComponent("1.1.4", new DateTime(2017, 12, 10, 23, 0, 0)),
                 mockComponent("1.1.5", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("1.2", new DateTime(2017, 12, 10, 23, 0, 0)),
                 fourthComponent);
         when(storageTx.findComponents(Matchers.any(String.class),
                 Matchers.any(Map.class),
                 Matchers.any(Iterable.class),
-                Matchers.eq("order by attributes.maven2.baseVersion asc limit " + PAGINATION_LIMIT)
+                Matchers.eq("order by attributes.maven2.baseVersion asc limit " + 11)
         )).thenReturn(components);
         when(storageTx.findComponents(Matchers.any(String.class),
                 Matchers.any(Map.class),
                 Matchers.any(Iterable.class),
                 Matchers.eq("order by attributes.maven2.baseVersion desc limit " + PAGINATION_LIMIT)
         )).thenReturn(components.subList(0,PAGINATION_LIMIT));
-        orID = new ORecordId(22, 1);
-        when(document.getIdentity()).thenReturn(orID);
-        when(fourthComponent.getEntityMetadata()).thenReturn(entityMetadata);
         when(storageTx.countComponents(Matchers.any(String.class),
                 Matchers.any(Map.class),
                 Matchers.any(Iterable.class),
                 Matchers.anyString()
 
-        )).thenReturn(16L);
+        )).thenReturn(17L);
 
 
         //When
         facet.purgeUnusedReleases(GROUP_ID, ARTIFACT_ID, VERSION_OPTION, 6);
+
+
+        //Then
+        verify(storageTx, times(3)).findComponents(Matchers.any(String.class),
+                Matchers.any(Map.class),
+                Matchers.any(Iterable.class),
+                Matchers.anyString());
+    }
+
+    @Test
+    public void test_the_purge_of_unused_releases_when_the_option_is_release_date() throws Exception {
+        //Given
+        initFirstRepository();
+        when(repository.facet(MavenFacet.class)).thenReturn(mavenFacet);
+
+
+        Component fifthComponent = mockComponent("1.2", new DateTime(2018, 1, 1, 23, 0, 0));
+
+        List<Component> components = Arrays.asList(mockComponent("1.0", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("3.0", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("2.0", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("1.1", new DateTime(2017, 12, 10, 23, 0, 0)),
+                fifthComponent);
+        when(storageTx.findComponents(Matchers.any(String.class),
+                Matchers.any(Map.class),
+                Matchers.any(Iterable.class),
+                Matchers.eq("order by last_updated asc limit " + 4)
+        )).thenReturn(components);
+        when(storageTx.findComponents(Matchers.any(String.class),
+                Matchers.any(Map.class),
+                Matchers.any(Iterable.class),
+                Matchers.eq("order by last_updated desc limit " + PAGINATION_LIMIT)
+        )).thenReturn(components.subList(0,4));
+
+        when(storageTx.countComponents(Matchers.any(String.class),
+                Matchers.any(Map.class),
+                Matchers.any(Iterable.class),
+                Matchers.anyString()
+
+        )).thenReturn(5L);
+
+
+        //When
+        facet.purgeUnusedReleases(GROUP_ID, ARTIFACT_ID, DATE_RELEASE_OPTION, 1);
 
 
         //Then

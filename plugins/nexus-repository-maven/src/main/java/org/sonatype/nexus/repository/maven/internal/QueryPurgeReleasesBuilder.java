@@ -4,6 +4,7 @@ import com.orientechnologies.orient.core.id.ORID;
 import org.sonatype.nexus.repository.Repository;
 import org.sonatype.nexus.repository.storage.StorageTx;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -13,9 +14,9 @@ public class QueryPurgeReleasesBuilder {
 
     public static final String VERSION_OPTION = "version";
     public static final String DATE_RELEASE_OPTION = "dateRelease";
-    private final Map<String, Object> queryParams;
-    private final String whereClause;
-    private final String querySuffix;
+    private  Map<String, Object> queryParams;
+    private  String whereClause;
+    private  String querySuffix;
 
 
     private QueryPurgeReleasesBuilder(Map<String, Object> queryParams, String whereClause, String querySuffix) {
@@ -25,44 +26,72 @@ public class QueryPurgeReleasesBuilder {
     }
 
 
-    public static QueryPurgeReleasesBuilder buildQuery(Repository repository, StorageTx tx, String groupId, String artifactId, String option, String lastComponentVersion, Long pagination, Boolean isCount, String order) {
+    public static QueryPurgeReleasesBuilder buildQuery(Repository repository,
+                                                       StorageTx tx,
+                                                       String groupId,
+                                                       String artifactId,
+                                                       Long pagination,
+                                                       Boolean isCount,
+                                                       String orderBy,
+                                                       String sort) {
         Map<String, Object> queryParameters = new HashMap<>();
         ORID bucketId = id(tx.findBucket(repository));
         queryParameters.put("bucketId", bucketId);
         queryParameters.put("groupId", groupId);
         queryParameters.put("artifactId", artifactId);
         queryParameters.put("criteriaSnapshot", "%SNAPSHOT%");
-        String whereClause = " ";
-        if (lastComponentVersion != null) {
-            queryParameters.put("lastComponentVersion", lastComponentVersion);
-            whereClause += " version <= :lastComponentVersion and ";
-        }
+        String whereClause = "bucket = :bucketId and attributes.maven2.groupId = :groupId and " +
+                " attributes.maven2.artifactId = :artifactId and not(attributes.maven2.baseVersion.toUpperCase() like :criteriaSnapshot)";
         StringBuilder querySuffixBuilder = new StringBuilder("");
         if (!isCount) {
-            if (VERSION_OPTION.equals(option)) {
-                querySuffixBuilder.append("order by attributes.maven2.baseVersion ");
-            } else if (DATE_RELEASE_OPTION.equals(option)) {
-                querySuffixBuilder.append("order by last_updated ");
-            }
-            querySuffixBuilder.append(order);
+            querySuffixBuilder.append(orderBy);
+            querySuffixBuilder.append(sort);
+            querySuffixBuilder.append(" limit ");
+            querySuffixBuilder.append(pagination);
         }
-        querySuffixBuilder.append(" limit ");
-        querySuffixBuilder.append(pagination);
 
-        whereClause += "bucket = :bucketId and attributes.maven2.groupId = :groupId and " +
-                " attributes.maven2.artifactId = :artifactId and not(attributes.maven2.baseVersion.toUpperCase() like :criteriaSnapshot)";
+
 
         return new QueryPurgeReleasesBuilder(queryParameters, whereClause, isCount ? null : querySuffixBuilder.toString());
     }
 
-    public static QueryPurgeReleasesBuilder buildQueryForCount(Repository repository, StorageTx tx, String groupId, String artifactId) {
-        return buildQuery(repository, tx,
+    public static QueryPurgeReleasesBuilder buildQueryForVersionOption(Repository repository,
+                                                                       StorageTx tx,
+                                                                       String groupId,
+                                                                       String artifactId,
+                                                                       String lastComponentVersion,
+                                                                       Long pagination,
+                                                                       String sort) {
+        QueryPurgeReleasesBuilder buildedQuery = buildQuery(repository,
+                tx,
                 groupId,
                 artifactId,
-                null,
-                null,
-                null,
-                true, null);
+                pagination, false,
+                "order by attributes.maven2.baseVersion ",
+                sort);
+        if (lastComponentVersion != null) {
+            buildedQuery.addFilterInQueryBuilder("lastComponentVersion", lastComponentVersion,
+                    " and version <= : lastComponentVersion");
+        }
+        return  buildedQuery;
+    }
+    public static QueryPurgeReleasesBuilder buildQueryForReleaseDateOption(Repository repository,
+                                                                           StorageTx tx,
+                                                                           String groupId,
+                                                                           String artifactId,
+                                                                           Date lastReleaseDate,
+                                                                           Long pagination,
+                                                                           String sort) {
+        QueryPurgeReleasesBuilder buildedQuery = buildQuery(repository,
+                tx, groupId, artifactId, pagination, false, "order by last_updated ", sort);
+        if (lastReleaseDate != null) {
+            buildedQuery.addFilterInQueryBuilder("lastReleaseDate", lastReleaseDate, " and last_updated <= :lastReleaseDate");
+        }
+        return  buildedQuery;
+    }
+
+    public static QueryPurgeReleasesBuilder buildQueryForCount(Repository repository, StorageTx tx, String groupId, String artifactId) {
+        return buildQuery(repository, tx, groupId, artifactId, null, true, null, null);
     }
 
     public Map<String, Object> getQueryParams() {
@@ -75,6 +104,11 @@ public class QueryPurgeReleasesBuilder {
 
     public String getWhereClause() {
         return whereClause;
+    }
+
+    public void addFilterInQueryBuilder(String filteredItem, Object filteredData, String suffixWhereClause) {
+        queryParams.put(filteredItem, filteredData);
+        whereClause += suffixWhereClause;
     }
 
     @Override

@@ -50,13 +50,12 @@ public class PurgeMavenUnusedReleasesTaskDescriptor  extends TaskDescriptorSuppo
                 new StringTextFormField(ARTIFACT_ID, "Artifact Id of the release",
                         "Enter the artifactId of the release you want to purge",
                         true),
-                new ComboboxFormField(OPTION_FOR_PURGE_ID,
+               new ComboboxFormField(OPTION_FOR_PURGE_ID,
                         "Option used for the purge",
                             "Select the option which going to be used for the purge",
                             false)
                         .withStoreApi("coreui_Task.readOptionsPurgeTask")
-                .withIdMapping("version").withNameMapping("Version")
-                .withIdMapping("dateRelease").withNameMapping("Date of Release"),
+                .withIdMapping("name"),
                 new NumberTextFormField(
                         NUMBER_RELEASES_TO_KEEP,
                         "Number of releases",
