@@ -480,7 +480,6 @@ class TaskComponent
   @RequiresPermissions('nexus:tasks:read')
   List<TaskOptionPurgeXO> readOptionsPurgeTask()
   {
-        log.info("TODO read options purge task")
         return [
                 new TaskOptionPurgeXO(name:  'version', description :"Version"),
                 new TaskOptionPurgeXO(name : 'dateRelease', description:  "Date de release")]

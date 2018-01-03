@@ -47,7 +47,6 @@ public class PurgeMavenUnusedReleasesTask  extends RepositoryTaskSupport
         String groupId = getConfiguration().getString(GROUP_ID);
         String artifactId = getConfiguration().getString(ARTIFACT_ID);
         String option = !Strings.isNullOrEmpty(getConfiguration().getString(OPTION_FOR_PURGE_ID)) ? getConfiguration().getString(OPTION_FOR_PURGE_ID) : "version";
-        log.info("Option used {} ", option);
         int numberOfReleasesToKeep = getConfiguration().getInteger(NUMBER_RELEASES_TO_KEEP, 1);
         repository.facet(PurgeUnusedReleasesFacet.class).purgeUnusedReleases(groupId,
                 artifactId, option, numberOfReleasesToKeep);

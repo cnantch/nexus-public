@@ -33,25 +33,29 @@ public class PurgeUnusedReleasesFacetImpl extends FacetSupport
         implements PurgeUnusedReleasesFacet {
 
 
-    private static final String MESSAGE_PURGE_NOT_EXECUTED = "TODO message to tell the purge cannot be done";
+    private static final String MESSAGE_PURGE_NOT_EXECUTED = "The purge of the releases in the repository {} cannot be done because the number of existing releases is below the number of releases to keep";
 
-    public static final int PAGINATION_LIMIT = 10;
+    static final int PAGINATION_LIMIT = 10;
 
 
     @Override
     @Guarded(by = STARTED)
     public void purgeUnusedReleases(String groupId, String artifactId, String option, int numberOfReleasesToKeep) {
-        TransactionalStoreMetadata.operation.withDb(facet(StorageFacet.class).txSupplier()).call(() -> {
-            long nbComponents = countTotalReleases(groupId, artifactId);
-            long nbReleasesToPurge = nbComponents - numberOfReleasesToKeep;
-            if (nbReleasesToPurge <= 0) {
-                log.debug(MESSAGE_PURGE_NOT_EXECUTED);
-            } else {
-                log.debug("Number of releases to purge {} ", nbReleasesToPurge);
-                process(groupId, artifactId, option, nbReleasesToPurge);
-            }
-            return null;
-        });
+        if (optionalFacet(StorageFacet.class).isPresent()) {
+            TransactionalStoreMetadata.operation.withDb(facet(StorageFacet.class).txSupplier()).call(() -> {
+                long nbComponents = countTotalReleases(groupId, artifactId);
+                long nbReleasesToPurge = nbComponents - numberOfReleasesToKeep;
+                String repositoryName = getRepository().getName();
+                if (nbReleasesToPurge <= 0) {
+                    log.debug(MESSAGE_PURGE_NOT_EXECUTED, repositoryName);
+                } else {
+                    log.debug("Number of releases to purge for the repository {} : {} ", nbReleasesToPurge, repositoryName);
+                    process(groupId, artifactId, option, nbReleasesToPurge);
+                }
+                return null;
+            });
+        }
+
     }
 
     /**
@@ -101,50 +105,46 @@ public class PurgeUnusedReleasesFacetImpl extends FacetSupport
                                              String lastComponentVersion,
                                              Date lastReleaseDate,
                                              String order) {
-        if (optionalFacet(StorageFacet.class).isPresent()) {
-            StorageTx tx = UnitOfWork.currentTx();
-            QueryPurgeReleasesBuilder queryPurgeReleasesBuilder = null;
-            if (VERSION_OPTION.equals(option)) {
-                queryPurgeReleasesBuilder = QueryPurgeReleasesBuilder.buildQueryForVersionOption(getRepository(),
-                        tx, groupId, artifactId, lastComponentVersion, pagination, order);
-            } else if (DATE_RELEASE_OPTION.equals(option)) {
-                queryPurgeReleasesBuilder = QueryPurgeReleasesBuilder.buildQueryForReleaseDateOption(getRepository(),
-                        tx, groupId, artifactId, lastReleaseDate, pagination, order);
-            }
-
-            log.debug("Query executed {} ", Objects.requireNonNull(queryPurgeReleasesBuilder).toString());
-
-            Iterable<Component> components = tx.findComponents(queryPurgeReleasesBuilder.getWhereClause(),
-                    queryPurgeReleasesBuilder.getQueryParams(), Collections.singletonList(getRepository()), queryPurgeReleasesBuilder.getQuerySuffix());
-            return Lists.newArrayList(components);
+        StorageTx tx = UnitOfWork.currentTx();
+        QueryPurgeReleasesBuilder queryPurgeReleasesBuilder = null;
+        if (VERSION_OPTION.equals(option)) {
+            queryPurgeReleasesBuilder = QueryPurgeReleasesBuilder.buildQueryForVersionOption(getRepository(),
+                    tx, groupId, artifactId, lastComponentVersion, pagination, order);
+        } else if (DATE_RELEASE_OPTION.equals(option)) {
+            queryPurgeReleasesBuilder = QueryPurgeReleasesBuilder.buildQueryForReleaseDateOption(getRepository(),
+                    tx, groupId, artifactId, lastReleaseDate, pagination, order);
         }
-        return Collections.emptyList();
+
+        log.debug("Query executed {} ", Objects.requireNonNull(queryPurgeReleasesBuilder).toString());
+
+        Iterable<Component> components = tx.findComponents(queryPurgeReleasesBuilder.getWhereClause(),
+                queryPurgeReleasesBuilder.getQueryParams(), Collections.singletonList(getRepository()), queryPurgeReleasesBuilder.getQuerySuffix());
+        return Lists.newArrayList(components);
+
     }
 
-    public List retrieveReleases(String groupId, String artifactId, String option, long pagination) {
+    public List<Component> retrieveReleases(String groupId, String artifactId, String option, long pagination) {
         return retrieveReleases(groupId, artifactId, option, pagination, null, null, "asc");
     }
 
     public long countTotalReleases(String groupId, String artifactId) {
-        long nbComponents = 0L;
-        if (optionalFacet(StorageFacet.class).isPresent()) {
-            StorageTx tx = UnitOfWork.currentTx();
-            QueryPurgeReleasesBuilder queryPurgeReleasesBuilder = QueryPurgeReleasesBuilder.buildQueryForCount(getRepository(),
-                    tx,
-                    groupId,
-                    artifactId);
-            nbComponents = tx.countComponents(queryPurgeReleasesBuilder.getWhereClause(),
-                    queryPurgeReleasesBuilder.getQueryParams(),
-                    Collections.singletonList(getRepository()), queryPurgeReleasesBuilder.getQuerySuffix());
-        }
-        log.info("Total number of releases components for {} {} : {} ", groupId, artifactId, nbComponents);
+        long nbComponents;
+        StorageTx tx = UnitOfWork.currentTx();
+        QueryPurgeReleasesBuilder queryPurgeReleasesBuilder = QueryPurgeReleasesBuilder.buildQueryForCount(getRepository(),
+                tx,
+                groupId,
+                artifactId);
+        nbComponents = tx.countComponents(queryPurgeReleasesBuilder.getWhereClause(),
+                queryPurgeReleasesBuilder.getQueryParams(),
+                Collections.singletonList(getRepository()), queryPurgeReleasesBuilder.getQuerySuffix());
+        log.debug("Total number of releases components for {} {} int the repository {} : {} ", groupId, artifactId, getRepository().getName(), nbComponents);
         return nbComponents;
     }
 
 
     @TransactionalDeleteBlob
     private void deleteComponent(final Component component) {
-        log.info("Deleting unused released component {}", component);
+        log.debug("Deleting unused released component {}", component);
         MavenFacet facet = facet(MavenFacet.class);
         final StorageTx tx = UnitOfWork.currentTx();
         tx.deleteComponent(component);

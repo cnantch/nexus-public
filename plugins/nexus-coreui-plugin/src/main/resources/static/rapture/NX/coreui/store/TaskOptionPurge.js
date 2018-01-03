@@ -19,6 +19,7 @@
  */
 Ext.define('NX.coreui.store.TaskOptionPurge', {
     extend: 'Ext.data.Store',
+    model: 'NX.coreui.model.TaskOptionPurge',
 
     proxy: {
         type: 'direct',
@@ -31,7 +32,8 @@ Ext.define('NX.coreui.store.TaskOptionPurge', {
         reader: {
             type: 'json',
             root: 'data',
-            idProperty : 'name'
+            idProperty : 'name',
+            successProperty: 'success'
         }
     }
 });

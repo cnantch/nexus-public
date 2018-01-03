@@ -7,13 +7,18 @@ import org.sonatype.nexus.repository.storage.StorageTx;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.sonatype.nexus.orient.entity.AttachedEntityHelper.id;
 
+/**
+ * Class used for build orient db sql request for purge unused releases
+ */
 public class QueryPurgeReleasesBuilder {
 
-    public static final String VERSION_OPTION = "version";
-    public static final String DATE_RELEASE_OPTION = "dateRelease";
+    static final String VERSION_OPTION = "version";
+    static final String DATE_RELEASE_OPTION = "dateRelease";
+
     private  Map<String, Object> queryParams;
     private  String whereClause;
     private  String querySuffix;
@@ -25,17 +30,28 @@ public class QueryPurgeReleasesBuilder {
         this.querySuffix = querySuffix;
     }
 
-
-    public static QueryPurgeReleasesBuilder buildQuery(Repository repository,
-                                                       StorageTx tx,
-                                                       String groupId,
-                                                       String artifactId,
-                                                       Long pagination,
-                                                       Boolean isCount,
-                                                       String orderBy,
-                                                       String sort) {
+    /**
+     * Build a query with thoses parameters
+     * @param repository - Repository selected for the purge
+     * @param tx - Storage Tx
+     * @param groupId - Group Id of the release
+     * @param artifactId - Artifact Id of the release
+     * @param pagination - Pagination limit
+     * @param isCount - Boolean which defines if is a count request
+     * @param orderBy - The criteria for the order
+     * @param sort - The criteria for the sort
+     * @return the query builded
+     */
+    private static QueryPurgeReleasesBuilder buildQuery(Repository repository,
+                                                        StorageTx tx,
+                                                        String groupId,
+                                                        String artifactId,
+                                                        Long pagination,
+                                                        Boolean isCount,
+                                                        String orderBy,
+                                                        String sort) {
         Map<String, Object> queryParameters = new HashMap<>();
-        ORID bucketId = id(tx.findBucket(repository));
+        ORID bucketId = id(Objects.requireNonNull(tx.findBucket(repository)));
         queryParameters.put("bucketId", bucketId);
         queryParameters.put("groupId", groupId);
         queryParameters.put("artifactId", artifactId);
@@ -75,6 +91,7 @@ public class QueryPurgeReleasesBuilder {
         }
         return  buildedQuery;
     }
+
     public static QueryPurgeReleasesBuilder buildQueryForReleaseDateOption(Repository repository,
                                                                            StorageTx tx,
                                                                            String groupId,
@@ -106,7 +123,7 @@ public class QueryPurgeReleasesBuilder {
         return whereClause;
     }
 
-    public void addFilterInQueryBuilder(String filteredItem, Object filteredData, String suffixWhereClause) {
+    private void addFilterInQueryBuilder(String filteredItem, Object filteredData, String suffixWhereClause) {
         queryParams.put(filteredItem, filteredData);
         whereClause += suffixWhereClause;
     }

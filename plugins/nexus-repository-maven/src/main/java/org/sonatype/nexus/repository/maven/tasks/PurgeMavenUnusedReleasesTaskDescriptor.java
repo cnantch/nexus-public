@@ -42,8 +42,8 @@ public class PurgeMavenUnusedReleasesTaskDescriptor  extends TaskDescriptorSuppo
                         "Select the hosted maven repository to purge unused releases versions from",
                         FormField.MANDATORY
                 ).includingAnyOfFacets(PurgeUnusedReleasesFacet.class).includingAnyOfFormats(Maven2Format.NAME)
-                        .includingAnyOfTypes(HostedType.NAME).excludingAnyOfVersionPolicies(VersionPolicy.SNAPSHOT.name())
-                .includeAnEntryForAllRepositories(),
+                        .includingAnyOfTypes(HostedType.NAME).includeAnEntryForAllRepositories().excludingAnyOfVersionPolicies(VersionPolicy.SNAPSHOT.name())
+                ,
                 new StringTextFormField(GROUP_ID, "Group Id of the release",
                         "Enter the groupId of the release you want to purge",
                         true),
@@ -53,9 +53,9 @@ public class PurgeMavenUnusedReleasesTaskDescriptor  extends TaskDescriptorSuppo
                new ComboboxFormField(OPTION_FOR_PURGE_ID,
                         "Option used for the purge",
                             "Select the option which going to be used for the purge",
-                            false)
+                            true)
                         .withStoreApi("coreui_Task.readOptionsPurgeTask")
-                .withIdMapping("name"),
+                .withIdMapping("name").withNameMapping("description"),
                 new NumberTextFormField(
                         NUMBER_RELEASES_TO_KEEP,
                         "Number of releases",
