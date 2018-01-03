@@ -27,15 +27,10 @@ import org.sonatype.nexus.repository.Repository;
 import org.sonatype.nexus.repository.browse.BrowseResult;
 import org.sonatype.nexus.repository.browse.api.AssetXO;
 import org.sonatype.nexus.repository.browse.api.ComponentXO;
-import org.sonatype.nexus.repository.search.SearchMapping;
-import org.sonatype.nexus.repository.search.SearchMappings;
 import org.sonatype.nexus.repository.search.SearchService;
 import org.sonatype.nexus.repository.storage.Asset;
-import org.sonatype.nexus.repository.types.GroupType;
 import org.sonatype.nexus.rest.Page;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.search.SearchHit;
@@ -101,27 +96,19 @@ public class SearchResourceTest
 
   SearchResource underTest;
 
-  Map<String, SearchMappings> searchMappings = ImmutableMap.of(
-      "default", () -> ImmutableList.of(
-          new SearchMapping("sha1", "assets.attributes.checksum.sha1", ""),
-          new SearchMapping("sha256", "assets.attributes.checksum.sha256", "")
-      )
-  );
-
   @Before
   public void setup() {
     configureMockedRepository(repository, "test-repo", "http://localhost:8081/test");
     setupResponse();
 
-    underTest = new SearchResource(repositoryManagerRESTAdapter, browseService, searchService, new GroupType(),
-        new TokenEncoder(), searchMappings);
+    underTest = new SearchResource(searchUtils, browseService, searchService,  new TokenEncoder());
   }
 
   private void setupResponse() {
     when(searchResponse.getHits()).thenReturn(searchHits);
 
     List assets = newArrayList(
-        createAsset("antlr.jar", "maven2", "first-sha1", of("extension", "jar")),
+        createAsset("antlr.jar", "maven2", "first-sha1", of("extension", "jar", "classifier", "foo")),
         createAsset("antlr.pom", "maven2", "second-sha1", of("extension", "pom"))
     );
     Map<String, Object> component = createComponent("foo", "test-repo", "format", "test", "1.0", assets);
@@ -175,6 +162,74 @@ public class SearchResourceTest
     assertThat(componentXO1.getAssets().get(0).getChecksum().get("sha1"), is("87acec17cd9dcd20a716cc2cf67417b71c8a7016"));
 
     assertThat(queryBuilderArgumentCaptor.getValue().toString(), is(expected.toString()));
+  }
+
+  @Test
+  public void testSearchWithChecksum() {
+    when(searchHits.hits()).thenReturn(new SearchHit[]{searchHitNpm});
+
+    when(searchService.search(queryBuilderArgumentCaptor.capture(), eq(emptyList()), eq(0), eq(50)))
+            .thenReturn(searchResponse);
+
+    Page<AssetXO> assets = underTest.searchAssets(null, uriInfo("?format=npm"));
+
+    List<AssetXO> items = assets.getItems();
+
+    assertThat(items, hasSize(3));
+
+    AssetXO assetXO = items.stream().filter(item -> item.getPath().equals("bar.one")).findFirst().get();
+    assertThat(assetXO.getChecksum().get("sha1"), is("third-sha1"));
+  }
+
+  @Test
+  public void testSearch_Using_Long_And_Short_AssetParamNames() {
+    when(searchHits.hits()).thenReturn(new SearchHit[]{searchHitMaven, searchHitNpm});
+
+    when(searchService.search(queryBuilderArgumentCaptor.capture(), eq(emptyList()), eq(0), eq(50)))
+        .thenReturn(searchResponse);
+
+    Page<AssetXO> assets_longName = underTest.searchAssets(null, uriInfo("?assets.attributes.maven2.extension=jar"));
+    List<AssetXO> items_longName = assets_longName.getItems();
+    assertThat(items_longName, hasSize(1));
+
+    Page<AssetXO> assets_shortName = underTest.searchAssets(null, uriInfo("?maven.extension=jar"));
+    List<AssetXO> items_shortName = assets_shortName.getItems();
+    assertThat(items_shortName, hasSize(1));
+  }
+
+  @Test
+  public void testSearch_When_Multiple_Aliases_For_An_AssetAttribute() {
+    when(searchHits.hits()).thenReturn(new SearchHit[]{searchHitMaven, searchHitNpm});
+
+    when(searchService.search(queryBuilderArgumentCaptor.capture(), eq(emptyList()), eq(0), eq(50)))
+        .thenReturn(searchResponse);
+
+    Page<AssetXO> assets_shortName = underTest.searchAssets(null, uriInfo("?maven.extension=jar"));
+    List<AssetXO> items_shortName = assets_shortName.getItems();
+    assertThat(items_shortName, hasSize(1));
+
+    //Search using alternate alias mapped to the same attribute as maven.extension
+    Page<AssetXO> assets_alternateName = underTest.searchAssets(null, uriInfo("?mvn.extension=jar"));
+    List<AssetXO> items_alternateName = assets_alternateName.getItems();
+    assertThat(items_alternateName, hasSize(1));
+  }
+
+  @Test
+  public void testSearch_With_UnMapped_Long_AssetAttribute() {
+    when(searchHits.hits()).thenReturn(new SearchHit[]{searchHitMaven});
+
+    when(searchService.search(queryBuilderArgumentCaptor.capture(), eq(emptyList()), eq(0), eq(50)))
+        .thenReturn(searchResponse);
+
+    //Positive case, 'classifier' is unmapped
+    Page<AssetXO> assets_validAttribute = underTest.searchAssets(null, uriInfo("?assets.attributes.maven2.classifier=foo"));
+    List<AssetXO> items_assets_validAttribute  = assets_validAttribute.getItems();
+    assertThat(items_assets_validAttribute , hasSize(1));
+
+    //Negative case
+    Page<AssetXO> assets_inValidAttribute = underTest.searchAssets(null, uriInfo("?assets.attributes.maven3.classifier=foo"));
+    List<AssetXO> items_inValidAttribute = assets_inValidAttribute.getItems();
+    assertThat(items_inValidAttribute, hasSize(0));
   }
 
   @Test
@@ -281,6 +336,16 @@ public class SearchResourceTest
   }
 
   @Test
+  public void testSearchAndDownload_WithLongAssetParam_AssetFound_302_REDIRECT() {
+    when(searchHits.hits()).thenReturn(new SearchHit[]{searchHitMaven});
+    when(searchService.search(queryBuilderArgumentCaptor.capture(), eq(emptyList()), eq(0), eq(50)))
+        .thenReturn(searchResponse);
+    Response response = underTest.searchAndDownloadAssets(uriInfo("?assets.attributes.maven2.extension=jar"));
+    assertThat(response.getStatus(), equalTo(302));
+    assertThat(response.getHeaderString("Location"), is("http://localhost:8081/test/antlr.jar"));
+  }
+
+  @Test
   public void testBuildQuery() {
     //the expected query
     QueryBuilder expected = boolQuery()
@@ -292,7 +357,7 @@ public class SearchResourceTest
         "&arbitrary.param=random" +
         "&sha256=" + //this one should be ignored because it is empty
         "&q=someKindOfStringQuery";
-    QueryBuilder actual = underTest.buildQuery(uriInfo(uri));
+    QueryBuilder actual = searchUtils.buildQuery(uriInfo(uri));
 
     assertThat(actual.toString(), is(expected.toString()));
   }
@@ -305,13 +370,35 @@ public class SearchResourceTest
 
     // put every single search param into the pam
     StringBuilder sb = new StringBuilder();
-    Set<String> allKeys = underTest.getSearchParams().keySet();
+    Set<String> allKeys = searchUtils.getSearchParameters().keySet();
     allKeys.forEach(s -> sb.append(s).append("=valueDoesNotMatter&"));
 
     // asert only assert params remain
     result = underTest.getAssetParams(uriInfo("?" + sb.toString()));
-    assertThat(result.size(), equalTo(underTest.getAssetSearchParams().size()));
-    assertThat(result.keySet(), equalTo(underTest.getAssetSearchParams().keySet()));
+    assertThat(result.size(), equalTo(searchUtils.getAssetSearchParameters().size()));
+    assertThat(result.keySet(), equalTo(searchUtils.getAssetSearchParameters().keySet()));
+  }
+
+  @Test
+  public void testGetAssetParams_ForLongAssetParamsEntries() {
+    //Positive case for long asset search param entries
+    MultivaluedMap<String, String> longNameResult = underTest.getAssetParams(
+        uriInfo("?assets.attributes.maven2.extension=jar"));
+    assertThat(longNameResult.size(), equalTo(1));
+    assertThat(longNameResult, hasKey("assets.attributes.maven2.extension"));
+
+    //Verify negative case
+    MultivaluedMap<String, String> negativeCaseResult = underTest.getAssetParams(
+        uriInfo("?attributes.not.asset.jar"));
+    assertThat(negativeCaseResult.size(), equalTo(0));
+  }
+
+  @Test
+  public void testGetAssetParams_ForParamsNotInSearchMappings() {
+    //Verify a query string can contain asset attributes not in the search mappings
+    MultivaluedMap<String, String> shortNameResult = underTest.getAssetParams(
+        uriInfo("?assets.attributes.maven2.classifier=jar"));
+    assertThat(shortNameResult.size(), equalTo(1));
   }
 
   @Test
@@ -320,6 +407,15 @@ public class SearchResourceTest
     assertTrue(underTest.filterAsset(
         createAsset("antlr.jar", "maven2", "first-sha1", of("extension", "jar")),
         new MultivaluedHashMap<>()));
+
+    //checking for consistency in handling short and long parameter names
+    assertTrue(underTest.filterAsset(
+        createAsset("antlr.jar", "maven2", "first-sha1", of("extension", "jar")),
+        uriInfo("?assets.attributes.maven2.extension=jar").getQueryParameters()));
+
+    assertTrue(underTest.filterAsset(
+        createAsset("antlr.jar", "maven2", "first-sha1", of("extension", "jar")),
+        uriInfo("?maven.extension=jar").getQueryParameters()));
 
     // regular positive case
     assertTrue(underTest.filterAsset(

@@ -14,75 +14,55 @@ package org.sonatype.nexus.repository.storage;
 
 import javax.annotation.Nullable;
 
-import static org.sonatype.nexus.repository.storage.ComponentEntityAdapter.P_GROUP;
-import static org.sonatype.nexus.repository.storage.ComponentEntityAdapter.P_VERSION;
-
 /**
  * Metadata about a software component.
  *
- * @since 3.0
+ * @since 3.7
  */
-public class Component
+public interface Component
     extends MetadataNode<Component>
 {
-  private String group;
-
-  private String version;
-
   /**
    * Gets the group or {@code null} if undefined.
    */
   @Nullable
-  public String group() {
-    return group;
-  }
+  String group();
 
   /**
    * Gets the group or throws a runtime exception if undefined.
    */
-  public String requireGroup() {
-    return require(group, P_GROUP);
-  }
+  String requireGroup();
 
   /**
    * Sets the group to the given value, or {@code null} to un-define it.
    */
-  public Component group(@Nullable final String group) {
-    this.group = group;
-    return this;
-  }
+  Component group(@Nullable final String group);
 
   /**
    * Gets the version or {@code null} if undefined.
    */
   @Nullable
-  public String version() {
-    return version;
-  }
+  String version();
 
   /**
    * Gets the version or throws a runtime exception if undefined.
    */
-  public String requireVersion() {
-    return require(version, P_VERSION);
-  }
+  String requireVersion();
 
   /**
    * Sets the version to the given value, or {@code null} to un-define it.
    */
-  public Component version(@Nullable final String version) {
-    this.version = version;
-    return this;
-  }
+  Component version(@Nullable final String version);
 
-  @Override
-  public String toString() {
-    return getClass().getSimpleName() + "{" +
-        "metadata=" + getEntityMetadata() +
+  /**
+   * The default {@link #toString()} includes the metadata which can leak out internal data when used for an external
+   * use case where it is exposed to the end user. For example, in a rest call. This method can be used for those cases
+   * instead to not leak out this data.
+   */
+  default String toStringExternal() {
+    return "group=" + group() +
         ", name=" + name() +
         ", version=" + version() +
-        ", group=" + group() +
-        '}';
+        ", format=" + format();
   }
-
 }

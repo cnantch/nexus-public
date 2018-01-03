@@ -35,7 +35,7 @@ import static org.sonatype.nexus.repository.storage.AssetEntityAdapter.P_SIZE;
  * @since 3.0
  */
 public class Asset
-    extends MetadataNode<Asset>
+    extends AbstractMetadataNode<Asset>
 {
   /**
    * Key of {@link Asset} nested map of blob content hashes (if asset has backing content).
@@ -88,7 +88,7 @@ public class Asset
   /**
    * Sets the component id this asset is part of.
    */
-  Asset componentId(final EntityId componentId) {
+  public Asset componentId(final EntityId componentId) {
     this.componentId = componentId;
     return this;
   }
@@ -197,7 +197,7 @@ public class Asset
   /**
    * Sets the blobRef to the given value, or {@code null} to un-define it.
    */
-  Asset blobRef(@Nullable final BlobRef blobRef) {
+  public Asset blobRef(@Nullable final BlobRef blobRef) {
     this.blobRef = blobRef;
     return this;
   }

@@ -76,6 +76,7 @@ Ext.define('NX.coreui.app.PluginStrings', {
     Component_Asset_Tree_Filtered_EmptyText_View: 'All components have been filtered out, try using <a href="#browse/search">search</a> instead?',
     Component_Asset_Tree_Results_Warning: 'There may be additional results, try filtering the results or searching if you cannot find what you\'re looking for.',
     Component_Asset_Tree_Html_View: 'HTML View',
+    Component_Asset_Tree_Upload_Component: 'Upload component',
 
     ComponentDetails_Delete_Button: 'Delete component',
     ComponentDetails_Analyze_Button: 'Analyze application',
@@ -242,6 +243,18 @@ Ext.define('NX.coreui.app.PluginStrings', {
     // Browse -> Upload
     FeatureGroups_Upload_Text: 'Upload',
     FeatureGroups_Upload_Description: 'Upload content to the repository',
+    FeatureGroups_Upload_Wait_Message: 'Uploading your components...',
+    FeatureGroups_Upload_Successful: 'Components uploaded successfully',
+    FeatureGroups_Upload_Successful_Link_Text: 'view it now.',
+    FeatureGroups_Upload_Successful_Text: 'Component uploaded to the {0} repository',
+    FeatureGroups_Upload_Asset_Form_Title: 'Choose assets for this component',
+    FeatureGroups_Upload_Asset_Form_File_Label: 'File',
+    FeatureGroups_Upload_Asset_Form_Remove_Button: 'Remove',
+    FeatureGroups_Upload_Asset_Form_Add_Asset_Button: 'Add another asset',
+    FeatureGroups_Upload_Component_Form_Title: 'Component coordinates',
+    FeatureGroups_Upload_Form_Upload_Button: 'Upload',
+    FeatureGroups_Upload_Form_Discard_Button: 'Cancel',
+    FeatureGroups_Upload_Form_Browse_Button: 'Browse',
 
     // Admin -> Repository
     FeatureGroups_Repository_Text: 'Repository',
@@ -295,6 +308,9 @@ Ext.define('NX.coreui.app.PluginStrings', {
     Repository_Facet_DockerProxyFacet_IndexUrl_HelpText: 'Location of Docker index',
     Repository_Facet_DockerProxyFacet_BasicAuth_FieldLabel: 'Force basic authentication',
     Repository_Facet_DockerProxyFacet_BasicAuth_BoxLabel: 'Disable to allow anonymous pull (Note: also requires Docker Bearer Token Realm to be activated)',
+    Repository_Facet_YumHostedFacet_Title: 'Yum',
+    Repository_Facet_YumHostedFacet_RepodataDepth_FieldLabel: 'Repodata Depth',
+    Repository_Facet_YumHostedFacet_RepodataDepth_HelpText: 'Specifies the repository depth where repodata folder(s) are created',
     Repository_Facet_GroupFacet_Title: 'Group',
     Repository_Facet_HttpClientFacet_Title: 'HTTP',
     Repository_Facet_Maven2Facet_Title: 'Maven 2',

@@ -334,7 +334,7 @@ public class RepositoryManagerImpl
     checkNotNull(configuration);
     String repositoryName = checkNotNull(configuration.getRepositoryName());
 
-    log.debug("Updating repository: {} -> {}", repositoryName, configuration);
+    log.info("Updating repository: {} -> {}", repositoryName, configuration);
 
     Repository repository = repository(repositoryName);
 

@@ -33,17 +33,19 @@ public interface AssetsResourceDoc
 {
   @ApiOperation("List assets")
   @ApiResponses(value = {
-      @ApiResponse(code = 422, message = "repositoryId is required")
+      @ApiResponse(code = 403, message = "Insufficient permissions to list assets"),
+      @ApiResponse(code = 422, message = "Parameter 'repository' is required")
   })
   Page<AssetXO> getAssets(
       @ApiParam(value = "A token returned by a prior request. If present, the next page of results are returned")
       final String continuationToken,
 
-      @ApiParam(value = "ID of the repository from which you would like to retrieve assets.", required = true)
-      final String repositoryId);
+      @ApiParam(value = "Repository from which you would like to retrieve assets.", required = true)
+      final String repository);
 
   @ApiOperation("Get a single asset")
   @ApiResponses(value = {
+      @ApiResponse(code = 403, message = "Insufficient permissions to get asset"),
       @ApiResponse(code = 404, message = "Asset not found"),
       @ApiResponse(code = 422, message = "Malformed ID")
   })

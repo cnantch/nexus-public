@@ -12,6 +12,7 @@
  */
 package org.sonatype.nexus.repository.browse.internal.resources;
 
+import java.io.IOException;
 import java.util.List;
 
 import javax.annotation.Nullable;
@@ -22,13 +23,17 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.NotFoundException;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.MediaType;
 
 import org.sonatype.goodies.common.ComponentSupport;
+import org.sonatype.nexus.common.entity.ContinuationTokenHelper;
+import org.sonatype.nexus.common.entity.ContinuationTokenHelper.ContinuationTokenException;
 import org.sonatype.nexus.common.entity.DetachedEntityId;
 import org.sonatype.nexus.repository.Repository;
 import org.sonatype.nexus.repository.browse.BrowseResult;
@@ -40,8 +45,12 @@ import org.sonatype.nexus.repository.browse.internal.resources.doc.ComponentsRes
 import org.sonatype.nexus.repository.maintenance.MaintenanceService;
 import org.sonatype.nexus.repository.storage.Component;
 import org.sonatype.nexus.repository.storage.ComponentEntityAdapter;
+import org.sonatype.nexus.repository.upload.ComponentUpload;
+import org.sonatype.nexus.repository.upload.UploadManager;
 import org.sonatype.nexus.rest.Page;
 import org.sonatype.nexus.rest.Resource;
+
+import org.jboss.resteasy.plugins.providers.multipart.MultipartInput;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Iterables.getLast;
@@ -52,6 +61,7 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.sonatype.nexus.common.entity.EntityHelper.id;
 import static org.sonatype.nexus.repository.browse.api.AssetXO.fromAsset;
 import static org.sonatype.nexus.repository.browse.internal.api.RepositoryItemIDXO.fromString;
+import static org.sonatype.nexus.repository.browse.internal.resources.ComponentUploadUtils.createComponentUpload;
 import static org.sonatype.nexus.repository.browse.internal.resources.ComponentsResource.RESOURCE_URI;
 import static org.sonatype.nexus.repository.http.HttpStatus.NOT_ACCEPTABLE;
 import static org.sonatype.nexus.rest.APIConstants.BETA_API_PREFIX;
@@ -79,46 +89,52 @@ public class ComponentsResource
 
   private final MaintenanceService maintenanceService;
 
+  private final ContinuationTokenHelper continuationTokenHelper;
+
+  private final UploadManager uploadManager;
+
   @Inject
   public ComponentsResource(final RepositoryManagerRESTAdapter repositoryManagerRESTAdapter,
                             final BrowseService browseService,
                             final ComponentEntityAdapter componentEntityAdapter,
-                            final MaintenanceService maintenanceService)
+                            final MaintenanceService maintenanceService,
+                            @Named("component") final ContinuationTokenHelper continuationTokenHelper,
+                            final UploadManager uploadManager)
   {
     this.repositoryManagerRESTAdapter = checkNotNull(repositoryManagerRESTAdapter);
     this.browseService = checkNotNull(browseService);
     this.componentEntityAdapter = checkNotNull(componentEntityAdapter);
     this.maintenanceService = checkNotNull(maintenanceService);
+    this.continuationTokenHelper = checkNotNull(continuationTokenHelper);
+    this.uploadManager = checkNotNull(uploadManager);
   }
 
   @GET
   public Page<ComponentXO> getComponents(@QueryParam("continuationToken") final String continuationToken,
-      @QueryParam("repositoryId") final String repositoryId)
+                                         @QueryParam("repository") final String repositoryId)
   {
     Repository repository = repositoryManagerRESTAdapter.getRepository(repositoryId);
 
-    final String lastId = lastIdFromContinuationToken(continuationToken);
-
     //must explicitly order by id or the generate sql will automatically order on group/name/version. (see BrowseComponentsSqlBuider)
     BrowseResult<Component> componentBrowseResult = browseService
-        .browseComponents(repository, new QueryOptions(null, "id", "asc", 0, 10, lastId));
+        .browseComponents(repository,
+            new QueryOptions(null, "id", "asc", 0, 10, lastIdFromContinuationToken(continuationToken)));
 
     List<ComponentXO> componentXOs = componentBrowseResult.getResults().stream()
         .map(component -> fromComponent(component, repository))
         .collect(toList());
 
     return new Page<>(componentXOs, componentBrowseResult.getTotal() > componentBrowseResult.getResults().size() ?
-        id(getLast(componentBrowseResult.getResults())).getValue() : null);
+        continuationTokenHelper.getTokenFromId(getLast(componentBrowseResult.getResults())) : null);
   }
 
   @Nullable
   private String lastIdFromContinuationToken(final String continuationToken) {
     try {
-      return continuationToken != null ?
-          componentEntityAdapter.recordIdentity(new DetachedEntityId(continuationToken)).toString() : null;
+      return continuationTokenHelper.getIdFromToken(continuationToken);
     }
-    catch (IllegalArgumentException e) {
-      log.debug("Caught exception parsing id from continuation token {}", continuationToken, e);
+    catch (ContinuationTokenException e) {
+      log.debug(e.getMessage(), e);
       throw new WebApplicationException(NOT_ACCEPTABLE);
     }
   }
@@ -184,5 +200,18 @@ public class ComponentsResource
     Component component = getComponent(repositoryItemIdXO, repository);
 
     maintenanceService.deleteComponent(repository, component);
+  }
+
+  /**
+   * @since 3.next
+   */
+  @POST
+  @Consumes(MediaType.MULTIPART_FORM_DATA)
+  public void uploadComponent(@QueryParam("repository") final String repositoryId, final MultipartInput multipartInput)
+      throws IOException
+  {
+    Repository repository = repositoryManagerRESTAdapter.getRepository(repositoryId);
+    ComponentUpload componentUpload = createComponentUpload(multipartInput);
+    uploadManager.handle(repository, componentUpload);
   }
 }
