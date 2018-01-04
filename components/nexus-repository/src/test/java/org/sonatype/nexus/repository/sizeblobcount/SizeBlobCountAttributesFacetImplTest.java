@@ -14,13 +14,11 @@ package org.sonatype.nexus.repository.sizeblobcount;
 
 import com.google.common.base.Supplier;
 import com.google.common.collect.Lists;
-import com.orientechnologies.orient.core.tx.OTransaction;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Matchers;
 import org.mockito.Mock;
 import org.sonatype.goodies.testsupport.TestSupport;
-import org.sonatype.nexus.blobstore.api.BlobRef;
 import org.sonatype.nexus.common.collect.NestedAttributesMap;
 import org.sonatype.nexus.repository.Repository;
 import org.sonatype.nexus.repository.config.Configuration;
@@ -189,6 +187,7 @@ public class SizeBlobCountAttributesFacetImplTest extends TestSupport{
         assertThat(repository.getConfiguration().getAttributes().
                 get(SizeBlobCountAttributesFacetImpl.SIZE_BLOB_COUNT_KEY_ATTRIBUTES)
                 .get(SizeBlobCountAttributesFacetImpl.BLOB_COUNT_KEY)).isEqualTo(0L);
+
     }
 
     @Test

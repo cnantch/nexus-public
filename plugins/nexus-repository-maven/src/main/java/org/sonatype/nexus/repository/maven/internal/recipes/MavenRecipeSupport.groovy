@@ -26,7 +26,6 @@ import org.sonatype.nexus.repository.maven.internal.matcher.MavenPathMatcher
 import org.sonatype.nexus.repository.maven.internal.matcher.MavenRepositoryMetadataMatcher
 import org.sonatype.nexus.repository.security.SecurityFacet
 import org.sonatype.nexus.repository.security.SecurityHandler
-import org.sonatype.nexus.repository.sizeblobcount.SizeBlobCountAttributesFacet
 import org.sonatype.nexus.repository.storage.StorageFacet
 import org.sonatype.nexus.repository.storage.UnitOfWorkHandler
 import org.sonatype.nexus.repository.view.ConfigurableViewFacet
