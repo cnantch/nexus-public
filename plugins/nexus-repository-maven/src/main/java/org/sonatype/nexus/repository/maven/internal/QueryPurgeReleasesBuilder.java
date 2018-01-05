@@ -19,9 +19,6 @@ import org.sonatype.nexus.repository.storage.StorageTx;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
-
-import static org.sonatype.nexus.orient.entity.AttachedEntityHelper.id;
 
 /**
  * Class used for build orient db sql request for purge unused releases
@@ -44,8 +41,8 @@ public class QueryPurgeReleasesBuilder {
 
     /**
      * Build a query with thoses parameters
-     * @param repository - Repository selected for the purge
-     * @param tx - Storage Tx
+     *
+     * @param bucketId
      * @param groupId - Group Id of the release
      * @param artifactId - Artifact Id of the release
      * @param pagination - Pagination limit
@@ -54,16 +51,13 @@ public class QueryPurgeReleasesBuilder {
      * @param sort - The criteria for the sort
      * @return the query builded
      */
-    private static QueryPurgeReleasesBuilder buildQuery(Repository repository,
-                                                        StorageTx tx,
-                                                        String groupId,
+    private static QueryPurgeReleasesBuilder buildQuery(ORID bucketId, String groupId,
                                                         String artifactId,
                                                         Long pagination,
                                                         Boolean isCount,
                                                         String orderBy,
                                                         String sort) {
         Map<String, Object> queryParameters = new HashMap<>();
-        ORID bucketId = id(Objects.requireNonNull(tx.findBucket(repository)));
         queryParameters.put("bucketId", bucketId);
         queryParameters.put("groupId", groupId);
         queryParameters.put("artifactId", artifactId);
@@ -83,15 +77,12 @@ public class QueryPurgeReleasesBuilder {
         return new QueryPurgeReleasesBuilder(queryParameters, whereClause, isCount ? null : querySuffixBuilder.toString());
     }
 
-    public static QueryPurgeReleasesBuilder buildQueryForVersionOption(Repository repository,
-                                                                       StorageTx tx,
-                                                                       String groupId,
+    public static QueryPurgeReleasesBuilder buildQueryForVersionOption(ORID bucketId, String groupId,
                                                                        String artifactId,
                                                                        String lastComponentVersion,
                                                                        Long pagination,
                                                                        String sort) {
-        QueryPurgeReleasesBuilder buildedQuery = buildQuery(repository,
-                tx,
+        QueryPurgeReleasesBuilder buildedQuery = buildQuery(bucketId,
                 groupId,
                 artifactId,
                 pagination, false,
@@ -104,23 +95,22 @@ public class QueryPurgeReleasesBuilder {
         return  buildedQuery;
     }
 
-    public static QueryPurgeReleasesBuilder buildQueryForReleaseDateOption(Repository repository,
-                                                                           StorageTx tx,
+    public static QueryPurgeReleasesBuilder buildQueryForReleaseDateOption(ORID bucketId,
                                                                            String groupId,
                                                                            String artifactId,
                                                                            Date lastReleaseDate,
                                                                            Long pagination,
                                                                            String sort) {
-        QueryPurgeReleasesBuilder buildedQuery = buildQuery(repository,
-                tx, groupId, artifactId, pagination, false, "order by last_updated ", sort);
+        QueryPurgeReleasesBuilder buildedQuery = buildQuery(bucketId,
+                groupId, artifactId, pagination, false, "order by last_updated ", sort);
         if (lastReleaseDate != null) {
             buildedQuery.addFilterInQueryBuilder("lastReleaseDate", lastReleaseDate, " and last_updated <= :lastReleaseDate");
         }
         return  buildedQuery;
     }
 
-    public static QueryPurgeReleasesBuilder buildQueryForCount(Repository repository, StorageTx tx, String groupId, String artifactId) {
-        return buildQuery(repository, tx, groupId, artifactId, null, true, null, null);
+    public static QueryPurgeReleasesBuilder buildQueryForCount(ORID bucketId, String groupId, String artifactId) {
+        return buildQuery(bucketId, groupId, artifactId, null, true, null, null);
     }
 
     public Map<String, Object> getQueryParams() {

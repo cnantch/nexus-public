@@ -38,7 +38,7 @@ public class PurgeMavenUnusedReleasesTask  extends RepositoryTaskSupport
 
     public static final String ARTIFACT_ID = "artifactId";
 
-    public static final String PURGE_UNUSED_MAVEN_RELEASES_MESSAGE = "Purge unused Maven releases versions of %s.%s of this repository %s";
+    public static final String PURGE_UNUSED_MAVEN_RELEASES_MESSAGE = "Purge unused Maven releases versions in this repository %s";
     public static final String OPTION_FOR_PURGE_ID = "optionForPurge";
 
     private final Type hostedType;
@@ -56,12 +56,9 @@ public class PurgeMavenUnusedReleasesTask  extends RepositoryTaskSupport
 
     @Override
     protected void execute(final Repository repository) {
-        String groupId = getConfiguration().getString(GROUP_ID);
-        String artifactId = getConfiguration().getString(ARTIFACT_ID);
         String option = !Strings.isNullOrEmpty(getConfiguration().getString(OPTION_FOR_PURGE_ID)) ? getConfiguration().getString(OPTION_FOR_PURGE_ID) : "version";
         int numberOfReleasesToKeep = getConfiguration().getInteger(NUMBER_RELEASES_TO_KEEP, 1);
-        repository.facet(PurgeUnusedReleasesFacet.class).purgeUnusedReleases(groupId,
-                artifactId, option, numberOfReleasesToKeep);
+        repository.facet(PurgeUnusedReleasesFacet.class).purgeUnusedReleases(numberOfReleasesToKeep, option);
 
     }
 
@@ -73,11 +70,7 @@ public class PurgeMavenUnusedReleasesTask  extends RepositoryTaskSupport
 
     @Override
     public String getMessage() {
-        String groupId = getConfiguration().getString(GROUP_ID);
-        String artifactId = getConfiguration().getString(ARTIFACT_ID);
         return String.format(PURGE_UNUSED_MAVEN_RELEASES_MESSAGE,
-                groupId,
-                artifactId,
                 getRepositoryField()) ;
     }
 }

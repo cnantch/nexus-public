@@ -56,13 +56,7 @@ public class PurgeMavenUnusedReleasesTaskDescriptor  extends TaskDescriptorSuppo
                 ).includingAnyOfFacets(PurgeUnusedReleasesFacet.class).includingAnyOfFormats(Maven2Format.NAME)
                         .includingAnyOfTypes(HostedType.NAME).includeAnEntryForAllRepositories().excludingAnyOfVersionPolicies(VersionPolicy.SNAPSHOT.name())
                 ,
-                new StringTextFormField(GROUP_ID, "Group Id of the release",
-                        "Enter the groupId of the release you want to purge",
-                        true),
-                new StringTextFormField(ARTIFACT_ID, "Artifact Id of the release",
-                        "Enter the artifactId of the release you want to purge",
-                        true),
-               new ComboboxFormField(OPTION_FOR_PURGE_ID,
+                new ComboboxFormField(OPTION_FOR_PURGE_ID,
                         "Option used for the purge",
                             "Select the option which going to be used for the purge",
                             true)

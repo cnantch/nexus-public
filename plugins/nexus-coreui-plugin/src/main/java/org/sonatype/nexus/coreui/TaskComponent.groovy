@@ -482,6 +482,6 @@ class TaskComponent
   {
         return [
                 new TaskOptionPurgeXO(name:  'version', description :"Version"),
-                new TaskOptionPurgeXO(name : 'dateRelease', description:  "Date de release")]
+                new TaskOptionPurgeXO(name : 'dateRelease', description:  "Release date")]
   }
 }

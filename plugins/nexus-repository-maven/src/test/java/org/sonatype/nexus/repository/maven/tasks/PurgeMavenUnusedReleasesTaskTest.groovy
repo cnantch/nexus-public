@@ -45,8 +45,6 @@ class PurgeMavenUnusedReleasesTaskTest  extends TestSupport {
         configuration.setId(PurgeMavenUnusedReleasesTaskDescriptor.TYPE_ID)
         configuration.setTypeId(PurgeMavenUnusedReleasesTaskDescriptor.TYPE_ID)
         configuration.setString(RepositoryTaskSupport.REPOSITORY_NAME_FIELD_ID, "my-maven-repo")
-        configuration.setString(PurgeMavenUnusedReleasesTask.GROUP_ID, "org.edf")
-        configuration.setString(PurgeMavenUnusedReleasesTask.ARTIFACT_ID, "demoNexus")
         task.configure(configuration)
 
         repository = mock(Repository.class)
@@ -64,8 +62,6 @@ class PurgeMavenUnusedReleasesTaskTest  extends TestSupport {
 
         then:
         message == String.format(PURGE_UNUSED_MAVEN_RELEASES_MESSAGE,
-                "org.edf",
-                "demoNexus",
                 "my-maven-repo")
     }
 
@@ -105,8 +101,7 @@ class PurgeMavenUnusedReleasesTaskTest  extends TestSupport {
      task.execute(repository)
 
      then:
-     verify(purgeUnusedReleasesFacet, times(1)).purgeUnusedReleases(Matchers.anyString(),
-     Matchers.anyString(), Matchers.anyString(), Matchers.anyInt())
+     verify(purgeUnusedReleasesFacet, times(1)).purgeUnusedReleases( Matchers.anyInt(), Matchers.anyString())
 
      }
 

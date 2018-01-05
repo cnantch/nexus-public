@@ -13,12 +13,13 @@
 package org.sonatype.nexus.repository.maven.internal;
 
 import com.google.common.collect.Lists;
-import org.sonatype.nexus.common.collect.NestedAttributesMap;
+import com.orientechnologies.orient.core.command.script.OCommandScript;
+import com.orientechnologies.orient.core.id.ORID;
+import com.orientechnologies.orient.core.record.impl.ODocument;
 import org.sonatype.nexus.common.stateguard.Guarded;
 import org.sonatype.nexus.repository.FacetSupport;
 import org.sonatype.nexus.repository.maven.MavenFacet;
 import org.sonatype.nexus.repository.maven.PurgeUnusedReleasesFacet;
-import org.sonatype.nexus.repository.maven.internal.hosted.metadata.MetadataUtils;
 import org.sonatype.nexus.repository.storage.Component;
 import org.sonatype.nexus.repository.storage.StorageFacet;
 import org.sonatype.nexus.repository.storage.StorageTx;
@@ -29,14 +30,11 @@ import org.sonatype.nexus.scheduling.TaskInterruptedException;
 import org.sonatype.nexus.transaction.UnitOfWork;
 
 import javax.inject.Named;
-import java.io.IOException;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
+import static java.util.Collections.*;
+import static org.sonatype.nexus.orient.entity.AttachedEntityHelper.id;
 import static org.sonatype.nexus.repository.FacetSupport.State.STARTED;
-import static org.sonatype.nexus.repository.maven.internal.Attributes.*;
 import static org.sonatype.nexus.repository.maven.internal.QueryPurgeReleasesBuilder.DATE_RELEASE_OPTION;
 import static org.sonatype.nexus.repository.maven.internal.QueryPurgeReleasesBuilder.VERSION_OPTION;
 
@@ -45,53 +43,68 @@ public class PurgeUnusedReleasesFacetImpl extends FacetSupport
         implements PurgeUnusedReleasesFacet {
 
 
-    private static final String MESSAGE_PURGE_NOT_EXECUTED = "The purge of the releases in the repository {} cannot be done because the number of existing releases is below the number of releases to keep";
+    private static final String MESSAGE_PURGE_NOT_EXECUTED = "The purge of the releases {}.{} in the repository {} cannot be done because the number of existing releases is below the number of releases to keep";
 
     static final int PAGINATION_LIMIT = 10;
+
+    private final String REQUEST_TOTAL_RELEASES_BY_RELEASE = "select count(*), attributes.maven2.groupId as groupId, attributes.maven2.artifactId as artifactId from component where bucket = %s " +
+            " group by attributes.maven2.artifactId, attributes.maven2.groupId";
 
 
     @Override
     @Guarded(by = STARTED)
-    public void purgeUnusedReleases(String groupId, String artifactId, String option, int numberOfReleasesToKeep) {
+    public void purgeUnusedReleases(int numberOfReleasesToKeep, String option) {
         if (optionalFacet(StorageFacet.class).isPresent()) {
             TransactionalStoreMetadata.operation.withDb(facet(StorageFacet.class).txSupplier()).call(() -> {
-                long nbComponents = countTotalReleases(groupId, artifactId);
-                long nbReleasesToPurge = nbComponents - numberOfReleasesToKeep;
-                String repositoryName = getRepository().getName();
-                if (nbReleasesToPurge <= 0) {
-                    log.debug(MESSAGE_PURGE_NOT_EXECUTED, repositoryName);
-                } else {
-                    log.debug("Number of releases to purge for the repository {} : {} ", nbReleasesToPurge, repositoryName);
-                    process(groupId, artifactId, option, nbReleasesToPurge);
+                final StorageTx tx = UnitOfWork.currentTx();
+                ORID bucketId = id(Objects.requireNonNull(tx.findBucket(getRepository())));
+                List<QueryResultForNumberOfReleases> listReleases = listNumberOfReleases(tx, bucketId);
+                for (QueryResultForNumberOfReleases q : listReleases) {
+                    long nbReleasesToPurge = q.getCount() - numberOfReleasesToKeep;
+                    String repositoryName = getRepository().getName();
+                    if (nbReleasesToPurge <= 0) {
+                        log.debug(MESSAGE_PURGE_NOT_EXECUTED, q.getGroupId(), q.getArtifactId(), repositoryName);
+                    } else {
+                        log.debug("Number of releases to purge for the repository {} : {} ", nbReleasesToPurge, repositoryName);
+                        process(tx, q.getGroupId(), q.getArtifactId(), option, nbReleasesToPurge, bucketId);
+                    }
                 }
+
                 return null;
             });
         }
-
     }
+
 
     /**
      * Processing the purge
      * @param groupId - Group Id of the component
      * @param artifactId - Artifact Id of the component
      * @param option - Option used to order by for purge
+     * @param bucketId - The bucket id
      */
-    private void process(String groupId, String artifactId, String option, long nbReleasesToPurge) {
+    private void process(final  StorageTx tx, String groupId, String artifactId, String option, long nbReleasesToPurge, ORID bucketId) {
         //First retrieve the last component of the releases which have been not purged
         String lastComponentVersion = null;
         Date lastReleaseDate = null;
-        List<Component> components = retrieveReleases(groupId, artifactId, option, nbReleasesToPurge);
+        List<Component> components = retrieveReleases(groupId, artifactId, option, nbReleasesToPurge, bucketId);
         if (VERSION_OPTION.equals(option)) {
             lastComponentVersion = getLastComponentVersion(components);
         } else if (DATE_RELEASE_OPTION.equals(option)) {
             lastReleaseDate = getLastComponentReleaseDate(components);
         }
-        StorageTx tx = UnitOfWork.currentTx();
         //
         int n = 0;
 
         while (n < nbReleasesToPurge && !isCanceled()) {
-            List<Component> filteredComponents = retrieveReleases(groupId, artifactId, option, PAGINATION_LIMIT, lastComponentVersion, lastReleaseDate, "desc");
+            List<Component> filteredComponents = retrieveReleases(groupId,
+                    artifactId,
+                    option,
+                    PAGINATION_LIMIT,
+                    lastComponentVersion,
+                    lastReleaseDate,
+                    "desc",
+                    bucketId);
             int totalComponents = filteredComponents.size();
             log.debug("{} components will be purged ", totalComponents);
             lastComponentVersion = getLastComponentVersion(filteredComponents);
@@ -116,39 +129,42 @@ public class PurgeUnusedReleasesFacetImpl extends FacetSupport
                                              long pagination,
                                              String lastComponentVersion,
                                              Date lastReleaseDate,
-                                             String order) {
+                                             String order,
+                                             ORID bucketId) {
         StorageTx tx = UnitOfWork.currentTx();
         QueryPurgeReleasesBuilder queryPurgeReleasesBuilder = null;
         if (VERSION_OPTION.equals(option)) {
-            queryPurgeReleasesBuilder = QueryPurgeReleasesBuilder.buildQueryForVersionOption(getRepository(),
-                    tx, groupId, artifactId, lastComponentVersion, pagination, order);
+            queryPurgeReleasesBuilder = QueryPurgeReleasesBuilder.buildQueryForVersionOption(bucketId,
+                    groupId, artifactId, lastComponentVersion, pagination, order);
         } else if (DATE_RELEASE_OPTION.equals(option)) {
-            queryPurgeReleasesBuilder = QueryPurgeReleasesBuilder.buildQueryForReleaseDateOption(getRepository(),
-                    tx, groupId, artifactId, lastReleaseDate, pagination, order);
+            queryPurgeReleasesBuilder = QueryPurgeReleasesBuilder.buildQueryForReleaseDateOption(bucketId,
+                    groupId, artifactId, lastReleaseDate, pagination, order);
         }
 
         log.debug("Query executed {} ", Objects.requireNonNull(queryPurgeReleasesBuilder).toString());
 
         Iterable<Component> components = tx.findComponents(queryPurgeReleasesBuilder.getWhereClause(),
-                queryPurgeReleasesBuilder.getQueryParams(), Collections.singletonList(getRepository()), queryPurgeReleasesBuilder.getQuerySuffix());
+                queryPurgeReleasesBuilder.getQueryParams(),
+                singletonList(getRepository()),
+                queryPurgeReleasesBuilder.getQuerySuffix());
         return Lists.newArrayList(components);
 
     }
 
-    public List<Component> retrieveReleases(String groupId, String artifactId, String option, long pagination) {
-        return retrieveReleases(groupId, artifactId, option, pagination, null, null, "asc");
+    public List<Component> retrieveReleases(String groupId, String artifactId, String option, long pagination, ORID bucketId) {
+        return retrieveReleases(groupId, artifactId, option, pagination, null, null, "asc", bucketId);
     }
 
-    public long countTotalReleases(String groupId, String artifactId) {
+    public long countTotalReleases(String groupId, String artifactId, ORID bucketId) {
         long nbComponents;
         StorageTx tx = UnitOfWork.currentTx();
-        QueryPurgeReleasesBuilder queryPurgeReleasesBuilder = QueryPurgeReleasesBuilder.buildQueryForCount(getRepository(),
-                tx,
+        QueryPurgeReleasesBuilder queryPurgeReleasesBuilder = QueryPurgeReleasesBuilder.buildQueryForCount(bucketId,
                 groupId,
                 artifactId);
         nbComponents = tx.countComponents(queryPurgeReleasesBuilder.getWhereClause(),
                 queryPurgeReleasesBuilder.getQueryParams(),
-                Collections.singletonList(getRepository()), queryPurgeReleasesBuilder.getQuerySuffix());
+                singletonList(getRepository()),
+                queryPurgeReleasesBuilder.getQuerySuffix());
         log.debug("Total number of releases components for {} {} int the repository {} : {} ", groupId, artifactId, getRepository().getName(), nbComponents);
         return nbComponents;
     }
@@ -179,4 +195,24 @@ public class PurgeUnusedReleasesFacetImpl extends FacetSupport
         }
     }
 
+    /**
+     * List the count of releases group by groupId/artifactId in a repository
+     * @param tx
+     * @param bucketId
+     * @return
+     */
+    public List<QueryResultForNumberOfReleases> listNumberOfReleases(final StorageTx tx,
+                                                                     ORID bucketId) {
+        List<QueryResultForNumberOfReleases> releases = new ArrayList<>();
+        String query = String.format(REQUEST_TOTAL_RELEASES_BY_RELEASE, bucketId);
+        List<ODocument> documentList = tx.getDb().command(new OCommandScript("sql", query)).execute();
+
+        for (ODocument document : documentList) {
+            releases.add(new QueryResultForNumberOfReleases(document.field("groupId"),
+                    document.field("artifactId"),
+                    document.field("count")));
+        }
+        return releases;
+
+    }
 }

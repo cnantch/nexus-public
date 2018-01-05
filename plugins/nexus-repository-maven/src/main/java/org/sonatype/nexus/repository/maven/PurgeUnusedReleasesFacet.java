@@ -24,12 +24,10 @@ public interface PurgeUnusedReleasesFacet extends Facet {
 
 
     /**
-     * Purge the number of releases of a library in a repository
-     * @param groupId - the group id of the library
-     * @param artifactId - The artifact id of the library
-     * @param option - Option used for the purge
+     * Purge the unused releases and keep the number of releases in parameter
      * @param numberOfReleasesToKeep - the number of releases to keep
+     * @param option - Option used for purge
      */
-    void purgeUnusedReleases(String groupId, String artifactId, String option, int numberOfReleasesToKeep);
+    void purgeUnusedReleases(int numberOfReleasesToKeep, String option);
 
 }

@@ -13,6 +13,8 @@
 package org.sonatype.nexus.repository.maven.internal;
 
 import com.google.common.base.Supplier;
+import com.orientechnologies.orient.core.command.OCommandRequest;
+import com.orientechnologies.orient.core.command.script.OCommandScript;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.record.impl.ODocument;
@@ -80,6 +82,10 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
     private Supplier<StorageTx> supplier;
     @Mock
     private ODatabaseDocumentTx oDatabaseDocumentTx;
+    @Mock
+    private OCommandRequest oCommandRequest;
+
+    private ORecordId bucketId;
 
     private void initFirstRepository() throws Exception {
         when(configuration.getRecipeName()).thenReturn("maven2-hosted");
@@ -95,10 +101,10 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
 
         //Bucket of the repository
         when(storageTx.findBucket(repository)).thenReturn(bucket);
-        ORecordId orID = new ORecordId(21, 1);
         EntityAdapter owner = mock(EntityAdapter.class);
         ODocument document = mock(ODocument.class);
-        when(document.getIdentity()).thenReturn(orID);
+        bucketId = new ORecordId(21, 1);
+        when(document.getIdentity()).thenReturn(bucketId);
         EntityMetadata entityMetadata = new AttachedEntityMetadata(owner, document);
         when(bucket.getEntityMetadata()).thenReturn(entityMetadata);
 
@@ -191,17 +197,17 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
     }
 
 
-    private Component mockComponent(String version, DateTime lastUpdatedDateTime) {
+    private Component mockComponent(String artifactId, String version, DateTime lastUpdatedDateTime) {
         Component component = mock(Component.class);
         when(component.group()).thenReturn(GROUP_ID);
         when(component.version()).thenReturn(version);
         when(component.format()).thenReturn("maven2");
-        when(component.name()).thenReturn(ARTIFACT_ID);
+        when(component.name()).thenReturn(artifactId);
         when(component.lastUpdated()).thenReturn(lastUpdatedDateTime);
         Map<String, Object> firstAttributesMap = new HashMap<>();
         firstAttributesMap.put("baseVersion", "1.0-SNAPSHOT");
         firstAttributesMap.put("groupId", GROUP_ID);
-        firstAttributesMap.put("artifactId", ARTIFACT_ID);
+        firstAttributesMap.put("artifactId", artifactId);
         NestedAttributesMap firstAttributesComponent = new NestedAttributesMap("maven2", firstAttributesMap);
         when(component.formatAttributes()).thenReturn(firstAttributesComponent);
         when(component.formatAttributes()).thenReturn(firstAttributesComponent);
@@ -215,6 +221,7 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
         facet.attach(repository);
 
         when(storageTx.getDb()).thenReturn(oDatabaseDocumentTx);
+        when(oDatabaseDocumentTx.command(Matchers.any(OCommandScript.class))).thenReturn(oCommandRequest);
 
         UnitOfWork.beginBatch(storageTx);
     }
@@ -235,7 +242,7 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
         )).thenReturn(3L);
 
         //When
-        long nbReleases = facet.countTotalReleases(GROUP_ID, ARTIFACT_ID);
+        long nbReleases = facet.countTotalReleases(GROUP_ID, ARTIFACT_ID, bucketId);
 
         //Then
         assertThat(nbReleases).isEqualTo(3);
@@ -275,7 +282,7 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
 
         //When
 
-        List components = facet.retrieveReleases(GROUP_ID, ARTIFACT_ID, "version", 10);
+        List components = facet.retrieveReleases(GROUP_ID, ARTIFACT_ID, VERSION_OPTION, 10, bucketId);
 
         //Then
         assertThat(components.size()).isEqualTo(3);
@@ -289,24 +296,25 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
         when(repository.facet(MavenFacet.class)).thenReturn(mavenFacet);
 
 
-        Component fifthComponent = mockComponent("1.0.5", new DateTime(2017, 12, 10, 23, 0, 0));
+        Component fifthComponent = mockComponent("demoNexus", "1.0.5", new DateTime(2017, 12, 10, 23, 0, 0));
 
-        List<Component> components = Arrays.asList(mockComponent("1.0.1", new DateTime(2017, 12, 10, 23, 0, 0)),
-                mockComponent("1.0.2", new DateTime(2017, 12, 10, 23, 0, 0)),
-                mockComponent("1.0.3", new DateTime(2017, 12, 10, 23, 0, 0)),
-                mockComponent("1.0.4", new DateTime(2017, 12, 10, 23, 0, 0)),
+        List<Component> components = Arrays.asList(
+                mockComponent("demoNexus", "1.0.1", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("demoNexus", "1.0.2", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("demoNexus", "1.0.3", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("demoNexus", "1.0.4", new DateTime(2017, 12, 10, 23, 0, 0)),
                 fifthComponent,
-                mockComponent("1.0.6", new DateTime(2017, 12, 10, 23, 0, 0)),
-                mockComponent("1.0.7", new DateTime(2017, 12, 10, 23, 0, 0)),
-                mockComponent("1.0.8", new DateTime(2017, 12, 10, 23, 0, 0)),
-                mockComponent("1.0.9", new DateTime(2017, 12, 10, 23, 0, 0)),
-                mockComponent("1.1.0", new DateTime(2017, 12, 10, 23, 0, 0)),
-                mockComponent("1.1.1", new DateTime(2017, 12, 10, 23, 0, 0)),
-                mockComponent("1.1.2", new DateTime(2017, 12, 10, 23, 0, 0)),
-                mockComponent("1.1.3", new DateTime(2017, 12, 10, 23, 0, 0)),
-                mockComponent("1.1.4", new DateTime(2017, 12, 10, 23, 0, 0)),
-                mockComponent("1.1.5", new DateTime(2017, 12, 10, 23, 0, 0)),
-                mockComponent("1.2", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("demoNexus", "1.0.6", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("demoNexus", "1.0.7", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("demoNexus", "1.0.8", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("demoNexus", "1.0.9", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("demoNexus", "1.1.0", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("demoNexus", "1.1.1", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("demoNexus", "1.1.2", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("demoNexus", "1.1.3", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("demoNexus", "1.1.4", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("demoNexus", "1.1.5", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("demoNexus", "1.2", new DateTime(2017, 12, 10, 23, 0, 0)),
                 fourthComponent);
         when(storageTx.findComponents(Matchers.any(String.class),
                 Matchers.any(Map.class),
@@ -318,16 +326,14 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
                 Matchers.any(Iterable.class),
                 Matchers.eq("order by attributes.maven2.baseVersion desc limit " + PAGINATION_LIMIT)
         )).thenReturn(components.subList(0,PAGINATION_LIMIT));
-        when(storageTx.countComponents(Matchers.any(String.class),
-                Matchers.any(Map.class),
-                Matchers.any(Iterable.class),
-                Matchers.anyString()
-
-        )).thenReturn(17L);
+        when(oCommandRequest.execute()).thenReturn(
+                Arrays.asList(new ODocument().field("groupId","org.edf").field("artifactId","demoNexus")
+                                .field("count", 17L)
+        ));
 
 
         //When
-        facet.purgeUnusedReleases(GROUP_ID, ARTIFACT_ID, VERSION_OPTION, 6);
+        facet.purgeUnusedReleases(6, VERSION_OPTION);
 
 
         //Then
@@ -344,12 +350,12 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
         when(repository.facet(MavenFacet.class)).thenReturn(mavenFacet);
 
 
-        Component fifthComponent = mockComponent("1.2", new DateTime(2018, 1, 1, 23, 0, 0));
+        Component fifthComponent = mockComponent("demoNexus", "1.2", new DateTime(2018, 1, 1, 23, 0, 0));
 
-        List<Component> components = Arrays.asList(mockComponent("1.0", new DateTime(2017, 12, 10, 23, 0, 0)),
-                mockComponent("3.0", new DateTime(2017, 12, 10, 23, 0, 0)),
-                mockComponent("2.0", new DateTime(2017, 12, 10, 23, 0, 0)),
-                mockComponent("1.1", new DateTime(2017, 12, 10, 23, 0, 0)),
+        List<Component> components = Arrays.asList(mockComponent("demoNexus", "1.0", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("demoNexus", "3.0", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("demoNexus", "2.0", new DateTime(2017, 12, 10, 23, 0, 0)),
+                mockComponent("demoNexus", "1.1", new DateTime(2017, 12, 10, 23, 0, 0)),
                 fifthComponent);
         when(storageTx.findComponents(Matchers.any(String.class),
                 Matchers.any(Map.class),
@@ -362,16 +368,13 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
                 Matchers.eq("order by last_updated desc limit " + PAGINATION_LIMIT)
         )).thenReturn(components.subList(0,4));
 
-        when(storageTx.countComponents(Matchers.any(String.class),
-                Matchers.any(Map.class),
-                Matchers.any(Iterable.class),
-                Matchers.anyString()
-
-        )).thenReturn(5L);
+        when(oCommandRequest.execute()).thenReturn(
+                Arrays.asList(new ODocument().field("groupId","org.edf").field("artifactId","demoNexus")
+                                .field("count", 5L)));
 
 
         //When
-        facet.purgeUnusedReleases(GROUP_ID, ARTIFACT_ID, DATE_RELEASE_OPTION, 1);
+        facet.purgeUnusedReleases(1, DATE_RELEASE_OPTION);
 
 
         //Then
@@ -386,15 +389,15 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
         //Given
         initFirstRepository();
 
-        when(storageTx.countComponents(Matchers.any(String.class),
-                Matchers.any(Map.class),
-                Matchers.any(Iterable.class),
-                Matchers.anyString()
-
-        )).thenReturn(16L);
+        when(oCommandRequest.execute()).thenReturn(
+                Arrays.asList(new ODocument().field("groupId","org.edf").field("artifactId","demoNexus")
+                                .field("count", 16L),
+                        new ODocument().field("groupId","org.edf").field("artifactId","demoTest")
+                                .field("count", 16L))
+        );
 
         //When
-        facet.purgeUnusedReleases(GROUP_ID, ARTIFACT_ID, VERSION_OPTION, 16);
+        facet.purgeUnusedReleases(16, VERSION_OPTION);
 
 
         //Then
@@ -402,5 +405,27 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
                 Matchers.any(Map.class),
                 Matchers.any(Iterable.class),
                 Matchers.anyString());
+    }
+
+    @Test
+    public void TODO_TEST() throws Exception {
+        //Given
+        initFirstRepository();
+
+        when(oCommandRequest.execute()).thenReturn(
+                Arrays.asList(new ODocument().field("groupId","org.edf").field("artifactId","demoNexus")
+                        .field("count", 5L),
+                        new ODocument().field("groupId","org.edf").field("artifactId","demoTest")
+                                .field("count", 2L))
+        );
+        //When
+        List<QueryResultForNumberOfReleases> queryResultForNumberOfReleasesList = facet.listNumberOfReleases(storageTx, bucketId);
+
+        //Then
+        assertThat(queryResultForNumberOfReleasesList.size()).isEqualTo(2);
+        assertThat(queryResultForNumberOfReleasesList.get(0)).isEqualTo(new QueryResultForNumberOfReleases(GROUP_ID, "demoNexus", 5L));
+        assertThat(queryResultForNumberOfReleasesList.get(1)).isEqualTo(new QueryResultForNumberOfReleases(GROUP_ID, "demoTest", 2L));
+
+
     }
 }
