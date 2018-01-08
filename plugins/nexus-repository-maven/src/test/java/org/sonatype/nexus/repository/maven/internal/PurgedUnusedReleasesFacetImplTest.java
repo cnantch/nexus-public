@@ -408,7 +408,7 @@ public class PurgedUnusedReleasesFacetImplTest extends TestSupport{
     }
 
     @Test
-    public void TODO_TEST() throws Exception {
+    public void list_the_number_of_releases_for_a_couple_groupId_artifactId_in_a_specific_bucket() throws Exception {
         //Given
         initFirstRepository();
 

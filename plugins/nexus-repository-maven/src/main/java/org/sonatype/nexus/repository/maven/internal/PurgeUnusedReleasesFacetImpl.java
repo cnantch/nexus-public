@@ -21,6 +21,7 @@ import org.sonatype.nexus.repository.FacetSupport;
 import org.sonatype.nexus.repository.maven.MavenFacet;
 import org.sonatype.nexus.repository.maven.PurgeUnusedReleasesFacet;
 import org.sonatype.nexus.repository.storage.Component;
+import org.sonatype.nexus.repository.storage.Query;
 import org.sonatype.nexus.repository.storage.StorageFacet;
 import org.sonatype.nexus.repository.storage.StorageTx;
 import org.sonatype.nexus.repository.transaction.TransactionalDeleteBlob;
@@ -48,7 +49,7 @@ public class PurgeUnusedReleasesFacetImpl extends FacetSupport
     static final int PAGINATION_LIMIT = 10;
 
     private final String REQUEST_TOTAL_RELEASES_BY_RELEASE = "select count(*), attributes.maven2.groupId as groupId, attributes.maven2.artifactId as artifactId from component where bucket = %s " +
-            " group by attributes.maven2.artifactId, attributes.maven2.groupId";
+            " group by attributes.maven2.artifactId, attributes.maven2.groupId limit %s";
 
 
     @Override
@@ -204,7 +205,10 @@ public class PurgeUnusedReleasesFacetImpl extends FacetSupport
     public List<QueryResultForNumberOfReleases> listNumberOfReleases(final StorageTx tx,
                                                                      ORID bucketId) {
         List<QueryResultForNumberOfReleases> releases = new ArrayList<>();
-        String query = String.format(REQUEST_TOTAL_RELEASES_BY_RELEASE, bucketId);
+        long totalComponents = tx.countComponents(Query.builder().where("1").eq(1).build(), Collections.singletonList(getRepository()));
+        log.debug("Bucket Id {} , total components {}", bucketId, totalComponents);
+        String query = String.format(REQUEST_TOTAL_RELEASES_BY_RELEASE, bucketId,
+                totalComponents != 0 ? totalComponents : -1);
         List<ODocument> documentList = tx.getDb().command(new OCommandScript("sql", query)).execute();
 
         for (ODocument document : documentList) {

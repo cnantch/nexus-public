@@ -17,7 +17,9 @@ import org.sonatype.nexus.repository.Format;
 import org.sonatype.nexus.repository.Repository;
 import org.sonatype.nexus.repository.RepositoryTaskSupport;
 import org.sonatype.nexus.repository.Type;
+import org.sonatype.nexus.repository.maven.MavenFacet;
 import org.sonatype.nexus.repository.maven.PurgeUnusedReleasesFacet;
+import org.sonatype.nexus.repository.maven.VersionPolicy;
 import org.sonatype.nexus.repository.maven.internal.Maven2Format;
 import org.sonatype.nexus.repository.types.HostedType;
 import org.sonatype.nexus.scheduling.Cancelable;
@@ -33,10 +35,6 @@ public class PurgeMavenUnusedReleasesTask  extends RepositoryTaskSupport
 {
 
     public static final String NUMBER_RELEASES_TO_KEEP = "numberOfReleasesToKeep";
-
-    public static final String GROUP_ID = "groupId";
-
-    public static final String ARTIFACT_ID = "artifactId";
 
     public static final String PURGE_UNUSED_MAVEN_RELEASES_MESSAGE = "Purge unused Maven releases versions in this repository %s";
     public static final String OPTION_FOR_PURGE_ID = "optionForPurge";
@@ -65,7 +63,9 @@ public class PurgeMavenUnusedReleasesTask  extends RepositoryTaskSupport
     @Override
     protected boolean appliesTo(final Repository repository) {
         return maven2Format.equals(repository.getFormat())
-                && hostedType.equals(repository.getType());
+                && hostedType.equals(repository.getType())
+                && (repository.facet(MavenFacet.class).getVersionPolicy() == VersionPolicy.RELEASE
+                    || repository.facet(MavenFacet.class).getVersionPolicy() == VersionPolicy.MIXED);
     }
 
     @Override
