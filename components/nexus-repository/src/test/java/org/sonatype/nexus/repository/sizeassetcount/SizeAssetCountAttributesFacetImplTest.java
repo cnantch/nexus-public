@@ -10,7 +10,7 @@
  * of Sonatype, Inc. Apache Maven is a trademark of the Apache Software Foundation. M2eclipse is a trademark of the
  * Eclipse Foundation. All other trademarks are the property of their respective owners.
  */
-package org.sonatype.nexus.repository.sizeblobcount;
+package org.sonatype.nexus.repository.sizeassetcount;
 
 import com.google.common.base.Supplier;
 import com.google.common.collect.Lists;
@@ -35,9 +35,9 @@ import static com.google.common.collect.ImmutableList.copyOf;
 import static org.fest.assertions.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.sonatype.nexus.repository.sizeblobcount.SizeBlobCountAttributesFacetImpl.*;
+import static org.sonatype.nexus.repository.sizeassetcount.SizeAssetCountAttributesFacetImpl.*;
 
-public class SizeBlobCountAttributesFacetImplTest extends TestSupport{
+public class SizeAssetCountAttributesFacetImplTest extends TestSupport{
 
 
     @Mock
@@ -173,20 +173,20 @@ public class SizeBlobCountAttributesFacetImplTest extends TestSupport{
         /**
          * Appel de la méthode de comptage de la taille et du blob count
          */
-        SizeBlobCountAttributesFacet sizeBlobCountAttributesFacet = new SizeBlobCountAttributesFacetImpl();
-        sizeBlobCountAttributesFacet.attach(repository);
-        sizeBlobCountAttributesFacet.calculateSizeBlobCount();
+        SizeAssetCountAttributesFacet sizeAssetCountAttributesFacet = new SizeAssetCountAttributesFacetImpl();
+        sizeAssetCountAttributesFacet.attach(repository);
+        sizeAssetCountAttributesFacet.calculateSizeAssetCount();
 
         //Then
         /**
-         * Return 0 for size and 0 for blobcount
+         * Return 0 for size and 0 for assetcount
          */
         assertThat(repository.getConfiguration().getAttributes().
-                get(SizeBlobCountAttributesFacetImpl.SIZE_BLOB_COUNT_KEY_ATTRIBUTES)
-                .get(SizeBlobCountAttributesFacetImpl.SIZE_KEY)).isEqualTo(0L);
+                get(SizeAssetCountAttributesFacetImpl.SIZE_ASSET_COUNT_KEY_ATTRIBUTES)
+                .get(SizeAssetCountAttributesFacetImpl.SIZE_KEY)).isEqualTo(0L);
         assertThat(repository.getConfiguration().getAttributes().
-                get(SizeBlobCountAttributesFacetImpl.SIZE_BLOB_COUNT_KEY_ATTRIBUTES)
-                .get(SizeBlobCountAttributesFacetImpl.BLOB_COUNT_KEY)).isEqualTo(0L);
+                get(SizeAssetCountAttributesFacetImpl.SIZE_ASSET_COUNT_KEY_ATTRIBUTES)
+                .get(SizeAssetCountAttributesFacetImpl.ASSET_COUNT_KEY)).isEqualTo(0L);
 
     }
 
@@ -202,23 +202,23 @@ public class SizeBlobCountAttributesFacetImplTest extends TestSupport{
         /**
          * Appel de la méthode de comptage de la taille et du blob count
          */
-        SizeBlobCountAttributesFacet sizeBlobCountAttributesFacet = new SizeBlobCountAttributesFacetImpl();
-        sizeBlobCountAttributesFacet.attach(repository);
-        sizeBlobCountAttributesFacet.calculateSizeBlobCount();
+        SizeAssetCountAttributesFacet sizeAssetCountAttributesFacet = new SizeAssetCountAttributesFacetImpl();
+        sizeAssetCountAttributesFacet.attach(repository);
+        sizeAssetCountAttributesFacet.calculateSizeAssetCount();
         //Then
         /**
-         * Return 0 for size and 0 for blobcount
+         * Return 0 for size and 0 for assetcount
          */
         assertThat(repository.getConfiguration().getAttributes().
-                get(SizeBlobCountAttributesFacetImpl.SIZE_BLOB_COUNT_KEY_ATTRIBUTES)
-                .get(SizeBlobCountAttributesFacetImpl.SIZE_KEY)).isEqualTo(0L);
+                get(SizeAssetCountAttributesFacetImpl.SIZE_ASSET_COUNT_KEY_ATTRIBUTES)
+                .get(SizeAssetCountAttributesFacetImpl.SIZE_KEY)).isEqualTo(0L);
         assertThat(repository.getConfiguration().getAttributes().
-                get(SizeBlobCountAttributesFacetImpl.SIZE_BLOB_COUNT_KEY_ATTRIBUTES)
-                .get(SizeBlobCountAttributesFacetImpl.BLOB_COUNT_KEY)).isEqualTo(0L);
+                get(SizeAssetCountAttributesFacetImpl.SIZE_ASSET_COUNT_KEY_ATTRIBUTES)
+                .get(SizeAssetCountAttributesFacetImpl.ASSET_COUNT_KEY)).isEqualTo(0L);
     }
 
     @Test
-    public void should_return_the_size_and_the_blob_count_of_the_assets_for_a_repository_which_contains_just_those_assets() throws Exception {
+    public void should_return_the_size_and_the_asset_count_of_the_assets_for_a_repository_which_contains_just_those_assets() throws Exception {
 
         //Given
         /**
@@ -230,27 +230,27 @@ public class SizeBlobCountAttributesFacetImplTest extends TestSupport{
         initConfiguration(repository);
         Map<String, Object> backing = new HashMap<>();
         backing.put(SIZE_KEY, 4000L);
-        backing.put(BLOB_COUNT_KEY, 2);
-        configuration.getAttributes().put(SIZE_BLOB_COUNT_KEY_ATTRIBUTES, backing);
+        backing.put(ASSET_COUNT_KEY, 2);
+        configuration.getAttributes().put(SIZE_ASSET_COUNT_KEY_ATTRIBUTES, backing);
 
         //When
         /**
          * Appel de la méthode de comptage de la taille et du blob count
          */
-        SizeBlobCountAttributesFacet sizeBlobCountAttributesFacet = new SizeBlobCountAttributesFacetImpl();
-        sizeBlobCountAttributesFacet.attach(repository);
-        sizeBlobCountAttributesFacet.calculateSizeBlobCount();
+        SizeAssetCountAttributesFacet sizeAssetCountAttributesFacet = new SizeAssetCountAttributesFacetImpl();
+        sizeAssetCountAttributesFacet.attach(repository);
+        sizeAssetCountAttributesFacet.calculateSizeAssetCount();
 
         //Then
         /**
          * Return the size and the blob count of the two assets
          */
         assertThat(repository.getConfiguration().getAttributes().
-                get(SizeBlobCountAttributesFacetImpl.SIZE_BLOB_COUNT_KEY_ATTRIBUTES)
-                .get(SizeBlobCountAttributesFacetImpl.SIZE_KEY)).isEqualTo(4000L);
+                get(SizeAssetCountAttributesFacetImpl.SIZE_ASSET_COUNT_KEY_ATTRIBUTES)
+                .get(SizeAssetCountAttributesFacetImpl.SIZE_KEY)).isEqualTo(4000L);
         assertThat(repository.getConfiguration().getAttributes().
-                get(SizeBlobCountAttributesFacetImpl.SIZE_BLOB_COUNT_KEY_ATTRIBUTES)
-                .get(SizeBlobCountAttributesFacetImpl.BLOB_COUNT_KEY)).isEqualTo(2L);
+                get(SizeAssetCountAttributesFacetImpl.SIZE_ASSET_COUNT_KEY_ATTRIBUTES)
+                .get(SizeAssetCountAttributesFacetImpl.ASSET_COUNT_KEY)).isEqualTo(2L);
     }
 
     @Test
@@ -267,8 +267,8 @@ public class SizeBlobCountAttributesFacetImplTest extends TestSupport{
         when(storageTx.findBucket(groupRepository)).thenReturn(groupBucket);
         Map<String, Object> backing = new HashMap<>();
         backing.put(SIZE_KEY, 0L);
-        backing.put(BLOB_COUNT_KEY, 0);
-        NestedAttributesMap attributesMap = new NestedAttributesMap(SIZE_BLOB_COUNT_KEY_ATTRIBUTES, backing);
+        backing.put(ASSET_COUNT_KEY, 0);
+        NestedAttributesMap attributesMap = new NestedAttributesMap(SIZE_ASSET_COUNT_KEY_ATTRIBUTES, backing);
         when(groupBucket.attributes()).thenReturn(attributesMap);
         initConfiguration(groupRepository);
 
@@ -277,19 +277,19 @@ public class SizeBlobCountAttributesFacetImplTest extends TestSupport{
         /**
          * Appel de la méthode de comptage de la taille et du blob count
          */
-        SizeBlobCountAttributesFacet sizeBlobCountAttributesFacet = new SizeBlobCountAttributesFacetImpl();
-        sizeBlobCountAttributesFacet.attach(groupRepository);
-        sizeBlobCountAttributesFacet.calculateSizeBlobCount();
+        SizeAssetCountAttributesFacet sizeAssetCountAttributesFacet = new SizeAssetCountAttributesFacetImpl();
+        sizeAssetCountAttributesFacet.attach(groupRepository);
+        sizeAssetCountAttributesFacet.calculateSizeAssetCount();
 
         //Then
         /**
          * Return the size and the blob count of the group repository
          */
         assertThat(groupRepository.getConfiguration().getAttributes().
-                get(SizeBlobCountAttributesFacetImpl.SIZE_BLOB_COUNT_KEY_ATTRIBUTES)
-                .get(SizeBlobCountAttributesFacetImpl.SIZE_KEY)).isEqualTo(0L);
+                get(SizeAssetCountAttributesFacetImpl.SIZE_ASSET_COUNT_KEY_ATTRIBUTES)
+                .get(SizeAssetCountAttributesFacetImpl.SIZE_KEY)).isEqualTo(0L);
         assertThat(groupRepository.getConfiguration().getAttributes().
-                get(SizeBlobCountAttributesFacetImpl.SIZE_BLOB_COUNT_KEY_ATTRIBUTES)
-                .get(SizeBlobCountAttributesFacetImpl.BLOB_COUNT_KEY)).isEqualTo(0L);
+                get(SizeAssetCountAttributesFacetImpl.SIZE_ASSET_COUNT_KEY_ATTRIBUTES)
+                .get(SizeAssetCountAttributesFacetImpl.ASSET_COUNT_KEY)).isEqualTo(0L);
     }
 }

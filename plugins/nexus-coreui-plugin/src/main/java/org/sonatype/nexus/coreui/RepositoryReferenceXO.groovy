@@ -29,7 +29,7 @@ class RepositoryReferenceXO
   String format
   String url
   RepositoryStatusXO status
-  long blobCount
+  long assetCount
   long size
 
   /**

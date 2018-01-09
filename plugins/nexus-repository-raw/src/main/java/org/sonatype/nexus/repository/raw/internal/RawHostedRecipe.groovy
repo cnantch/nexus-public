@@ -22,7 +22,7 @@ import org.sonatype.nexus.repository.http.HttpMethods
 import org.sonatype.nexus.repository.http.PartialFetchHandler
 import org.sonatype.nexus.repository.search.SearchFacet
 import org.sonatype.nexus.repository.security.SecurityHandler
-import org.sonatype.nexus.repository.sizeblobcount.SizeBlobCountAttributesFacet
+import org.sonatype.nexus.repository.sizeassetcount.SizeAssetCountAttributesFacet
 import org.sonatype.nexus.repository.storage.SingleAssetComponentMaintenance
 import org.sonatype.nexus.repository.storage.StorageFacet
 import org.sonatype.nexus.repository.storage.UnitOfWorkHandler
@@ -78,7 +78,7 @@ class RawHostedRecipe
   Provider<SearchFacet> searchFacet
 
   @Inject
-  Provider<SizeBlobCountAttributesFacet> sizeBlobCountAttributesFacet
+  Provider<SizeAssetCountAttributesFacet> sizeAssetCountAttributesFacet
 
   @Inject
   ExceptionHandler exceptionHandler
@@ -126,7 +126,7 @@ class RawHostedRecipe
     repository.attach(attributesFacet.get())
     repository.attach(componentMaintenance.get())
     repository.attach(searchFacet.get());
-    repository.attach(sizeBlobCountAttributesFacet.get())
+    repository.attach(sizeAssetCountAttributesFacet.get())
   }
 
   /**

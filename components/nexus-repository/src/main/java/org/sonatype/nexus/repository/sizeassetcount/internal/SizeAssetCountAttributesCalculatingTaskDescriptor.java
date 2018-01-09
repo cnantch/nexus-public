@@ -10,11 +10,11 @@
  * of Sonatype, Inc. Apache Maven is a trademark of the Apache Software Foundation. M2eclipse is a trademark of the
  * Eclipse Foundation. All other trademarks are the property of their respective owners.
  */
-package org.sonatype.nexus.repository.sizeblobcount.internal;
+package org.sonatype.nexus.repository.sizeassetcount.internal;
 
 import org.sonatype.nexus.formfields.FormField;
 import org.sonatype.nexus.formfields.RepositoryCombobox;
-import org.sonatype.nexus.repository.sizeblobcount.SizeBlobCountAttributesFacet;
+import org.sonatype.nexus.repository.sizeassetcount.SizeAssetCountAttributesFacet;
 import org.sonatype.nexus.repository.types.HostedType;
 import org.sonatype.nexus.scheduling.TaskDescriptorSupport;
 
@@ -29,15 +29,15 @@ import static org.sonatype.nexus.repository.RepositoryTaskSupport.REPOSITORY_NAM
  */
 @Named
 @Singleton
-public class SizeBlobCountAttributesCalculatingTaskDescriptor extends TaskDescriptorSupport
+public class SizeAssetCountAttributesCalculatingTaskDescriptor extends TaskDescriptorSupport
 {
-    public static final String TYPE_ID = "repository.calculate-size-blobcount";
+    public static final String TYPE_ID = "repository.calculate-size-assetcount";
 
     @Inject
-    public SizeBlobCountAttributesCalculatingTaskDescriptor() {
+    public SizeAssetCountAttributesCalculatingTaskDescriptor() {
         super(TYPE_ID,
-                SizeBlobCountAttributesCalculatingTask.class,
-                " Calculate the size and the blob count of a repository",
+                SizeAssetCountAttributesCalculatingTask.class,
+                " Calculate the size and the asset count of a repository",
                 VISIBLE,
                 EXPOSED,
                 new RepositoryCombobox(
@@ -45,7 +45,7 @@ public class SizeBlobCountAttributesCalculatingTaskDescriptor extends TaskDescri
                         "Repository",
                         "Select the repository which you will calculate the size and the blob count",
                         FormField.MANDATORY
-                ).includingAnyOfFacets(SizeBlobCountAttributesFacet.class).includingAnyOfTypes(HostedType.NAME).includeAnEntryForAllRepositories()
+                ).includingAnyOfFacets(SizeAssetCountAttributesFacet.class).includingAnyOfTypes(HostedType.NAME).includeAnEntryForAllRepositories()
         );
     }
 }

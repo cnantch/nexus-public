@@ -156,8 +156,8 @@ class RepositoryComponent
           type: repository.type.toString(),
           format: repository.format.toString(),
           status: buildStatus(repository),
-              size: repository?.configuration?.attributes?.sizeBlobCount?.size ?: 0L,
-              blobCount: repository?.configuration?.attributes?.sizeBlobCount?.blobCount ?: 0L,
+              size: repository?.configuration?.attributes?.sizeAssetCount?.size ?: 0L,
+              assetCount: repository?.configuration?.attributes?.sizeAssetCount?.assetCount ?: 0L,
           url: "${BaseUrlHolder.get()}/repository/${repository.name}/"// trailing slash is important,
       )
     }
@@ -280,8 +280,8 @@ class RepositoryComponent
         online: input.configuration.online,
         recipe: input.configuration.recipeName,
         status: buildStatus(input),
-            size: input?.configuration?.attributes?.sizeBlobCount?.size ?: 0L,
-            blobCount: input?.configuration?.attributes?.sizeBlobCount?.blobCount ?: 0L,
+            size: input?.configuration?.attributes?.sizeAssetCount?.size ?: 0L,
+            assetCount: input?.configuration?.attributes?.sizeAssetCount?.assetCount ?: 0L,
         attributes: filterAttributes(input.configuration.copy().attributes),
         url: "${BaseUrlHolder.get()}/repository/${input.name}/" // trailing slash is important
     )

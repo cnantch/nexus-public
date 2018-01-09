@@ -10,7 +10,7 @@
  * of Sonatype, Inc. Apache Maven is a trademark of the Apache Software Foundation. M2eclipse is a trademark of the
  * Eclipse Foundation. All other trademarks are the property of their respective owners.
  */
-package org.sonatype.nexus.repository.sizeblobcount;
+package org.sonatype.nexus.repository.sizeassetcount;
 
 import org.sonatype.nexus.repository.Facet;
 
@@ -19,10 +19,10 @@ import org.sonatype.nexus.repository.Facet;
  * @since 3.7.0
  */
 @Facet.Exposed
-public interface SizeBlobCountAttributesFacet extends Facet{
+public interface SizeAssetCountAttributesFacet extends Facet{
 
     /**
-     * Calculate the size and the blob count of a repository
+     * Calculate the size and the asset count of a repository
      */
-    void calculateSizeBlobCount();
+    void calculateSizeAssetCount();
 }

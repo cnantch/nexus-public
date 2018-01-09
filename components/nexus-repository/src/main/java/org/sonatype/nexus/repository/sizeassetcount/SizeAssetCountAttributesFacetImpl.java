@@ -10,7 +10,7 @@
  * of Sonatype, Inc. Apache Maven is a trademark of the Apache Software Foundation. M2eclipse is a trademark of the
  * Eclipse Foundation. All other trademarks are the property of their respective owners.
  */
-package org.sonatype.nexus.repository.sizeblobcount;
+package org.sonatype.nexus.repository.sizeassetcount;
 
 import com.google.common.collect.Streams;
 import org.sonatype.nexus.repository.FacetSupport;
@@ -31,7 +31,7 @@ import java.util.Objects;
  * @since 3.7.0
  */
 @Named
-public class SizeBlobCountAttributesFacetImpl extends FacetSupport implements SizeBlobCountAttributesFacet {
+public class SizeAssetCountAttributesFacetImpl extends FacetSupport implements SizeAssetCountAttributesFacet {
 
     @Inject
     private RepositoryManager repositoryManager;
@@ -39,18 +39,18 @@ public class SizeBlobCountAttributesFacetImpl extends FacetSupport implements Si
 
 
     // Key for the attributes for Size and  Blob count
-    public static final String SIZE_BLOB_COUNT_KEY_ATTRIBUTES = "sizeBlobCount";
-    // Key for the data blobCount
-    public static final String BLOB_COUNT_KEY = "blobCount";
+    public static final String SIZE_ASSET_COUNT_KEY_ATTRIBUTES = "sizeAssetCount";
+    // Key for the data assetcount
+    public static final String ASSET_COUNT_KEY = "assetCount";
     // Key for the data size
     public static final String SIZE_KEY = "size";
 
 
-    public void calculateSizeBlobCount() {
+    public void calculateSizeAssetCount() {
         String repositoryName = getRepository().getName();
         log.debug("Repository name {} ", repositoryName);
         Map<String, Object> attributesMap = new HashMap<>();
-        attributesMap.put(BLOB_COUNT_KEY,0L);
+        attributesMap.put(ASSET_COUNT_KEY,0L);
         attributesMap.put(SIZE_KEY,0L);
         if (optionalFacet(StorageFacet.class).isPresent()) {
             TransactionalStoreMetadata.operation.withDb(facet(StorageFacet.class).txSupplier()).call(() -> {
@@ -62,7 +62,7 @@ public class SizeBlobCountAttributesFacetImpl extends FacetSupport implements Si
                 //Assets of the bucket
                 Iterable<Asset> assets = storageTx.browseAssets(bucket);
                 if (assets != null) {
-                    attributesMap.put(BLOB_COUNT_KEY, storageTx.countAssets(Query.builder().where("1").eq(1).build(), Collections.singletonList(getRepository())));
+                    attributesMap.put(ASSET_COUNT_KEY, storageTx.countAssets(Query.builder().where("1").eq(1).build(), Collections.singletonList(getRepository())));
                     attributesMap.put(SIZE_KEY, Streams.stream(assets).mapToLong(Asset::size).sum());
                 }
 
@@ -71,12 +71,12 @@ public class SizeBlobCountAttributesFacetImpl extends FacetSupport implements Si
         }
         Configuration configuration = getRepository().getConfiguration();
         Objects.requireNonNull(configuration.getAttributes())
-                .put(SIZE_BLOB_COUNT_KEY_ATTRIBUTES, attributesMap);
+                .put(SIZE_ASSET_COUNT_KEY_ATTRIBUTES, attributesMap);
         try {
             repositoryManager.update(configuration);
-            log.debug("The attributes sizeAndBlobCount of the repository {} have been updated", repositoryName);
+            log.debug("The attributes sizeAssetCount of the repository {} have been updated", repositoryName);
         } catch (Exception e) {
-            log.error("Error occuring during the update of rhe repository {} ", repositoryName);
+            log.error("Error occuring during the update of rhe repository {} ", repositoryName, e);
         }
 
 

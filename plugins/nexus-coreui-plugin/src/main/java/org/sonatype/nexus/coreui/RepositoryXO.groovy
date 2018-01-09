@@ -52,7 +52,7 @@ class RepositoryXO
 
   RepositoryStatusXO status
 
-  long blobCount
+  long assetCount
 
   long size
 }

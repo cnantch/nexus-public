@@ -61,9 +61,9 @@ Ext.define('NX.coreui.view.repository.RepositoryListTemplate', {
          renderer: Ext.util.Format.fileSize
       },
       {
-         text: NX.I18n.get('Repository_RepositoryList_BlobCount_Header'),
-         dataIndex: 'blobCount',
-          stateId: 'blobCount'
+         text: NX.I18n.get('Repository_RepositoryList_AssetCount_Header'),
+         dataIndex: 'assetCount',
+          stateId: 'assetCount'
        },
 
       {
