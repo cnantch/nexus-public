@@ -43,7 +43,7 @@ public class SizeAssetCountAttributesCalculatingTaskDescriptor extends TaskDescr
                 new RepositoryCombobox(
                         REPOSITORY_NAME_FIELD_ID,
                         "Repository",
-                        "Select the repository which you will calculate the size and the blob count",
+                        "Select the repository which you will calculate the size and the asset count",
                         FormField.MANDATORY
                 ).includingAnyOfFacets(SizeAssetCountAttributesFacet.class).includingAnyOfTypes(HostedType.NAME).includeAnEntryForAllRepositories()
         );
