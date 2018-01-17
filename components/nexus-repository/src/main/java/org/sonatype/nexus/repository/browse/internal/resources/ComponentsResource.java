@@ -14,6 +14,7 @@ package org.sonatype.nexus.repository.browse.internal.resources;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -38,14 +39,17 @@ import org.sonatype.nexus.common.entity.DetachedEntityId;
 import org.sonatype.nexus.repository.Repository;
 import org.sonatype.nexus.repository.browse.BrowseResult;
 import org.sonatype.nexus.repository.browse.BrowseService;
+import org.sonatype.nexus.repository.browse.ComponentsResourceExtension;
 import org.sonatype.nexus.repository.browse.QueryOptions;
 import org.sonatype.nexus.repository.browse.api.ComponentXO;
+import org.sonatype.nexus.repository.browse.api.ComponentXOFactory;
 import org.sonatype.nexus.repository.browse.internal.api.RepositoryItemIDXO;
 import org.sonatype.nexus.repository.browse.internal.resources.doc.ComponentsResourceDoc;
 import org.sonatype.nexus.repository.maintenance.MaintenanceService;
 import org.sonatype.nexus.repository.storage.Component;
 import org.sonatype.nexus.repository.storage.ComponentEntityAdapter;
 import org.sonatype.nexus.repository.upload.ComponentUpload;
+import org.sonatype.nexus.repository.upload.UploadConfiguration;
 import org.sonatype.nexus.repository.upload.UploadManager;
 import org.sonatype.nexus.rest.Page;
 import org.sonatype.nexus.rest.Resource;
@@ -64,6 +68,8 @@ import static org.sonatype.nexus.repository.browse.internal.api.RepositoryItemID
 import static org.sonatype.nexus.repository.browse.internal.resources.ComponentUploadUtils.createComponentUpload;
 import static org.sonatype.nexus.repository.browse.internal.resources.ComponentsResource.RESOURCE_URI;
 import static org.sonatype.nexus.repository.http.HttpStatus.NOT_ACCEPTABLE;
+import static org.sonatype.nexus.repository.http.HttpStatus.NOT_FOUND;
+import static org.sonatype.nexus.repository.http.HttpStatus.UNPROCESSABLE_ENTITY;
 import static org.sonatype.nexus.rest.APIConstants.BETA_API_PREFIX;
 
 /**
@@ -93,13 +99,23 @@ public class ComponentsResource
 
   private final UploadManager uploadManager;
 
+  private final UploadConfiguration uploadConfiguration;
+
+  private final ComponentXOFactory componentXOFactory;
+
+  private final Set<ComponentsResourceExtension> componentsResourceExtensions;
+
   @Inject
   public ComponentsResource(final RepositoryManagerRESTAdapter repositoryManagerRESTAdapter,
                             final BrowseService browseService,
                             final ComponentEntityAdapter componentEntityAdapter,
                             final MaintenanceService maintenanceService,
                             @Named("component") final ContinuationTokenHelper continuationTokenHelper,
-                            final UploadManager uploadManager)
+                            final UploadManager uploadManager,
+                            final UploadConfiguration uploadConfiguration,
+                            final ComponentXOFactory componentXOFactory,
+                            final Set<ComponentsResourceExtension> componentsResourceExtensions
+  )
   {
     this.repositoryManagerRESTAdapter = checkNotNull(repositoryManagerRESTAdapter);
     this.browseService = checkNotNull(browseService);
@@ -107,6 +123,9 @@ public class ComponentsResource
     this.maintenanceService = checkNotNull(maintenanceService);
     this.continuationTokenHelper = checkNotNull(continuationTokenHelper);
     this.uploadManager = checkNotNull(uploadManager);
+    this.uploadConfiguration = checkNotNull(uploadConfiguration);
+    this.componentXOFactory = checkNotNull(componentXOFactory);
+    this.componentsResourceExtensions = checkNotNull(componentsResourceExtensions);
   }
 
   @GET
@@ -142,8 +161,7 @@ public class ComponentsResource
   private ComponentXO fromComponent(Component component, Repository repository) {
     String internalId = id(component).getValue();
 
-    ComponentXO componentXO = new ComponentXO();
-
+    ComponentXO componentXO = componentXOFactory.createComponentXO();
 
     componentXO
         .setAssets(browseService.browseComponentAssets(repository, component.getEntityMetadata().getId().getValue())
@@ -158,6 +176,10 @@ public class ComponentsResource
     componentXO.setId(new RepositoryItemIDXO(repository.getName(), internalId).getValue());
     componentXO.setRepository(repository.getName());
     componentXO.setFormat(repository.getFormat().getValue());
+
+    for (ComponentsResourceExtension componentsResourceExtension : componentsResourceExtensions) {
+      componentXO = componentsResourceExtension.updateComponentXO(componentXO, component);
+    }
 
     return componentXO;
   }
@@ -183,10 +205,9 @@ public class ComponentsResource
           () -> new NotFoundException("Unable to locate component with id " + repositoryItemIDXO.getValue()));
     }
     catch (IllegalArgumentException e) {
-      log.debug("IllegalArgumentException caught retrieving component with id {}, converting to NotFoundException",
-          repositoryItemIDXO.getId(), e);
-      throw new WebApplicationException(format("Unable to locate component with id %s", repositoryItemIDXO.getId()),
-          NOT_ACCEPTABLE);
+      log.debug("IllegalArgumentException caught retrieving component with id {}", repositoryItemIDXO.getId(), e);
+      throw new WebApplicationException(format("Unable to process component with id %s", repositoryItemIDXO.getId()),
+          UNPROCESSABLE_ENTITY);
     }
   }
 
@@ -210,6 +231,10 @@ public class ComponentsResource
   public void uploadComponent(@QueryParam("repository") final String repositoryId, final MultipartInput multipartInput)
       throws IOException
   {
+    if (!uploadConfiguration.isEnabled()) {
+      throw new WebApplicationException(NOT_FOUND);
+    }
+
     Repository repository = repositoryManagerRESTAdapter.getRepository(repositoryId);
     ComponentUpload componentUpload = createComponentUpload(multipartInput);
     uploadManager.handle(repository, componentUpload);

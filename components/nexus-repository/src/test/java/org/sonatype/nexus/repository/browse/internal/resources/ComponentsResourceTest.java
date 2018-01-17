@@ -30,8 +30,10 @@ import org.sonatype.nexus.common.entity.DetachedEntityId;
 import org.sonatype.nexus.common.entity.EntityId;
 import org.sonatype.nexus.common.entity.EntityMetadata;
 import org.sonatype.nexus.repository.browse.BrowseResult;
+import org.sonatype.nexus.repository.browse.ComponentsResourceExtension;
 import org.sonatype.nexus.repository.browse.QueryOptions;
 import org.sonatype.nexus.repository.browse.api.ComponentXO;
+import org.sonatype.nexus.repository.browse.api.ComponentXOFactory;
 import org.sonatype.nexus.repository.browse.internal.api.RepositoryItemIDXO;
 import org.sonatype.nexus.repository.maintenance.MaintenanceService;
 import org.sonatype.nexus.repository.storage.Asset;
@@ -39,10 +41,13 @@ import org.sonatype.nexus.repository.storage.Component;
 import org.sonatype.nexus.repository.storage.ComponentEntityAdapter;
 import org.sonatype.nexus.repository.storage.internal.ComponentContinuationTokenHelper;
 import org.sonatype.nexus.repository.upload.ComponentUpload;
+import org.sonatype.nexus.repository.upload.UploadConfiguration;
 import org.sonatype.nexus.repository.upload.UploadManager;
 import org.sonatype.nexus.rest.Page;
 
+import com.google.common.collect.ImmutableSet;
 import com.orientechnologies.orient.core.id.ORID;
+import org.hamcrest.CoreMatchers;
 import org.jboss.resteasy.plugins.providers.multipart.InputPart;
 import org.jboss.resteasy.plugins.providers.multipart.MultipartInput;
 import org.junit.Before;
@@ -52,8 +57,10 @@ import org.junit.rules.ExpectedException;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
+import org.mockito.Spy;
 
 import static java.lang.String.format;
+import static java.util.Collections.emptySet;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
@@ -61,15 +68,16 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
-import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.sonatype.nexus.repository.http.HttpStatus.NOT_ACCEPTABLE;
+import static org.sonatype.nexus.repository.http.HttpStatus.UNPROCESSABLE_ENTITY;
 
 public class ComponentsResourceTest
     extends RepositoryResourceTestSupport
@@ -127,14 +135,29 @@ public class ComponentsResourceTest
   @Mock
   private UploadManager uploadManager;
 
+  @Mock
+  private UploadConfiguration uploadConfiguration;
+
   @Captor
   private ArgumentCaptor<ComponentUpload> componentUploadCaptor;
 
-  private ContinuationTokenHelper continuationTokenHelper;
+  @Spy
+  private ComponentsResourceExtension componentsResourceExtension = new TestComponentsResourceExtension();
 
   private Asset assetOne;
 
   private Asset assetTwo;
+
+  private void configureComponent(Component component, String group, String name, String version) {
+    when(component.group()).thenReturn(group);
+    when(component.name()).thenReturn(name);
+    when(component.version()).thenReturn(version);
+  }
+
+  @Test
+  public void checkPath() {
+    assertThat(ComponentsResource.RESOURCE_URI, is("/beta/components"));
+  }
 
   @Before
   public void setUp() throws Exception {
@@ -162,21 +185,13 @@ public class ComponentsResourceTest
         .thenReturn(componentOneBrowseResults);
     when(componentTwoBrowseResults.getResults()).thenReturn(Collections.singletonList(assetTwo));
 
-    continuationTokenHelper = new ComponentContinuationTokenHelper(componentEntityAdapter);
+    ContinuationTokenHelper continuationTokenHelper = new ComponentContinuationTokenHelper(componentEntityAdapter);
+
+    when(uploadConfiguration.isEnabled()).thenReturn(true);
 
     underTest = new ComponentsResource(repositoryManagerRESTAdapter, browseService, componentEntityAdapter,
-        maintenanceService, continuationTokenHelper, uploadManager);
-  }
-
-  private void configureComponent(Component component, String group, String name, String version) {
-    when(component.group()).thenReturn(group);
-    when(component.name()).thenReturn(name);
-    when(component.version()).thenReturn(version);
-  }
-
-  @Test
-  public void checkPath() {
-    assertThat(ComponentsResource.RESOURCE_URI, is("/beta/components"));
+        maintenanceService, continuationTokenHelper, uploadManager, uploadConfiguration,
+        new ComponentXOFactory(emptySet()), ImmutableSet.of(componentsResourceExtension));
   }
 
   @Test
@@ -192,42 +207,9 @@ public class ComponentsResourceTest
     assertThat(componentXOPage.getItems(), hasSize(2));
     assertThat(componentXOPage.getContinuationToken(), is("88491cd1d185dd1318fdba4364e78406"));
     assertThat(queryOptionsCaptor.getValue().getLastId(), nullValue());
+    verify(componentsResourceExtension, times(2)).updateComponentXO(any(ComponentXO.class), any(Component.class));
 
     componentXOPage.getItems().stream().forEach(componentXO -> assertThat(componentXO.getAssets(), hasSize(1)));
-  }
-
-  @Test
-  public void getComponents_lastPage() throws Exception {
-    when(componentBrowseResult.getTotal()).thenReturn(2L);
-    when(componentBrowseResult.getResults()).thenReturn(Arrays.asList(componentOne, componentTwo));
-
-    when(browseService.browseComponents(eq(mavenReleases), queryOptionsCaptor.capture()))
-        .thenReturn(componentBrowseResult);
-
-    when(componentEntityAdapter.recordIdentity(detachedEntityIdCaptor.capture())).thenReturn(componentTwoORID);
-
-    Page<ComponentXO> componentXOPage = underTest.getComponents("88491cd1d185dd1318fdba4364e78406", mavenReleasesId);
-
-    assertThat(componentXOPage.getItems(), hasSize(2));
-    assertThat(componentXOPage.getContinuationToken(), isEmptyOrNullString());
-    assertThat(queryOptionsCaptor.getValue().getLastId(), notNullValue());
-    assertThat(detachedEntityIdCaptor.getValue(), notNullValue());
-
-    componentXOPage.getItems().stream().forEach(componentXO -> assertThat(componentXO.getAssets(), hasSize(1)));
-  }
-
-  @Test
-  public void getComponentById() throws Exception {
-    RepositoryItemIDXO repositoryItemXOID = getRepositoryItemIdXO(componentOne);
-
-    ComponentXO componentXO = underTest.getComponentById(repositoryItemXOID.getValue());
-
-    assertThat(componentXO, notNullValue());
-    assertThat(componentXO.getGroup(), is("component-one-group"));
-    assertThat(componentXO.getName(), is("component-one-name"));
-    assertThat(componentXO.getVersion(), is("1.0.0"));
-    assertThat(componentXO.getAssets(), hasSize(1));
-
   }
 
   @Test(expected = NotFoundException.class)
@@ -246,7 +228,7 @@ public class ComponentsResourceTest
     doThrow(new IllegalArgumentException()).when(componentEntityAdapter)
         .recordIdentity(new DetachedEntityId(repositoryItemXOID.getId()));
 
-    thrown.expect(hasProperty("response", hasProperty("status", is(NOT_ACCEPTABLE))));
+    thrown.expect(hasProperty("response", hasProperty("status", is(UNPROCESSABLE_ENTITY))));
     underTest.getComponentById(repositoryItemXOID.getValue());
   }
 
@@ -290,6 +272,9 @@ public class ComponentsResourceTest
   public void uploadComponent() throws Exception {
     MultipartInput multipart = mock(MultipartInput.class);
     InputPart filePart = mockStreamInputPart("asset", "content");
+    MultivaluedMap<String, String> fileHeaders = mock(MultivaluedMap.class);
+    when(filePart.getHeaders()).thenReturn(fileHeaders);
+    when(fileHeaders.getFirst("Content-Disposition")).thenReturn("form-data; name=asset; filename=foo-0.42.jar");
     InputPart groupPart = mockTextInputPart("groupId", "com.example");
     InputPart artifactPart = mockTextInputPart("artifactId", "foo");
     InputPart versionPart = mockTextInputPart("version", "0.42");
@@ -302,6 +287,20 @@ public class ComponentsResourceTest
     assertThat(componentUploadCaptor.getValue().getFields().size(), is(3));
     assertThat(componentUploadCaptor.getValue().getAssetUploads().size(), is(1));
     assertThat(componentUploadCaptor.getValue().getAssetUploads().get(0).getFields().size(), is(1));
+  }
+
+  @Test
+  public void uploadComponentIsHiddenWhenFeatureFlagIsNotEnabled() throws Exception {
+    when(uploadConfiguration.isEnabled()).thenReturn(false);
+
+    try {
+      underTest.uploadComponent(mavenReleasesId, null);
+      fail("Expected a WebApplicationException(NOT_FOUND) to be thrown");
+    }
+    catch (WebApplicationException e) {
+      assertThat(e.getResponse(), is(CoreMatchers.notNullValue()));
+      assertThat(e.getResponse().getStatus(), is(404));
+    }
   }
 
   private static InputPart mockTextInputPart(String name, String value) throws IOException {
@@ -322,5 +321,50 @@ public class ComponentsResourceTest
     when(mock.getHeaders()).thenReturn(headers);
     when(mock.getBody(InputStream.class, null)).thenReturn(new ByteArrayInputStream(value.getBytes()));
     return mock;
+  }
+
+  @Test
+  public void getComponents_lastPage() throws Exception {
+    when(componentBrowseResult.getTotal()).thenReturn(2L);
+    when(componentBrowseResult.getResults()).thenReturn(Arrays.asList(componentOne, componentTwo));
+
+    when(browseService.browseComponents(eq(mavenReleases), queryOptionsCaptor.capture()))
+        .thenReturn(componentBrowseResult);
+
+    when(componentEntityAdapter.recordIdentity(detachedEntityIdCaptor.capture())).thenReturn(componentTwoORID);
+
+    Page<ComponentXO> componentXOPage = underTest.getComponents("88491cd1d185dd1318fdba4364e78406", mavenReleasesId);
+
+    assertThat(componentXOPage.getItems(), hasSize(2));
+    assertThat(componentXOPage.getContinuationToken(), isEmptyOrNullString());
+    assertThat(queryOptionsCaptor.getValue().getLastId(), notNullValue());
+    assertThat(detachedEntityIdCaptor.getValue(), notNullValue());
+    verify(componentsResourceExtension, times(2)).updateComponentXO(any(ComponentXO.class), any(Component.class));
+
+    componentXOPage.getItems().stream().forEach(componentXO -> assertThat(componentXO.getAssets(), hasSize(1)));
+  }
+
+  @Test
+  public void getComponentById() throws Exception {
+    RepositoryItemIDXO repositoryItemXOID = getRepositoryItemIdXO(componentOne);
+
+    ComponentXO componentXO = underTest.getComponentById(repositoryItemXOID.getValue());
+
+    assertThat(componentXO, notNullValue());
+    assertThat(componentXO.getGroup(), is("component-one-group"));
+    assertThat(componentXO.getName(), is("component-one-name"));
+    assertThat(componentXO.getVersion(), is("1.0.0"));
+    assertThat(componentXO.getAssets(), hasSize(1));
+
+    verify(componentsResourceExtension).updateComponentXO(any(ComponentXO.class), any(Component.class));
+  }
+
+  private class TestComponentsResourceExtension
+      implements ComponentsResourceExtension
+  {
+    @Override
+    public ComponentXO updateComponentXO(final ComponentXO componentXO, final Component component) {
+      return componentXO;
+    }
   }
 }

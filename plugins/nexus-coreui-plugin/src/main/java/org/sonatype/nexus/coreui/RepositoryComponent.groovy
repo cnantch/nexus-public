@@ -155,6 +155,7 @@ class RepositoryComponent
           name: repository.name,
           type: repository.type.toString(),
           format: repository.format.toString(),
+          versionPolicy: repository.configuration.attributes.maven?.versionPolicy,
           status: buildStatus(repository),
               size: repository?.configuration?.attributes?.sizeAssetCount?.size ?: 0L,
               assetCount: repository?.configuration?.attributes?.sizeAssetCount?.assetCount ?: 0L,
