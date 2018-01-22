@@ -48,7 +48,6 @@ Ext.define('NX.coreui.view.repository.RepositoryList', {
       }
     ];
 
-
     this.callParent();
   }
 

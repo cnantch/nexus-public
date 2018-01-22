@@ -90,6 +90,7 @@ Ext.define('NX.coreui.view.repository.RepositorySettingsForm', {
             helpText: NX.I18n.get('Repository_RepositorySettingsForm_Type_HelpText'),
             readOnly: true
           },
+
           {
             xtype: 'textfield',
             cls: 'nx-no-border',
@@ -109,9 +110,7 @@ Ext.define('NX.coreui.view.repository.RepositorySettingsForm', {
             helpText: NX.I18n.get('Repository_RepositorySettingsForm_Online_HelpText'),
             value: true
           }
-
         ]
-
       }
     ]);
 

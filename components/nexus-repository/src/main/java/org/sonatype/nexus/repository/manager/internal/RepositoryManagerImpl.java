@@ -12,7 +12,10 @@
  */
 package org.sonatype.nexus.repository.manager.internal;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import javax.annotation.Nullable;
@@ -73,13 +76,13 @@ import static org.sonatype.nexus.common.stateguard.StateGuardLifecycleSupport.St
 @Singleton
 @ManagedLifecycle(phase = SERVICES)
 @ManagedObject(
-        domain = "org.sonatype.nexus.repository.manager",
-        typeClass = RepositoryManager.class,
-        description = "Repository manager"
+    domain = "org.sonatype.nexus.repository.manager",
+    typeClass = RepositoryManager.class,
+    description = "Repository manager"
 )
 public class RepositoryManagerImpl
-        extends StateGuardLifecycleSupport
-        implements RepositoryManager, EventAware
+    extends StateGuardLifecycleSupport
+    implements RepositoryManager, EventAware
 {
   private final DatabaseFreezeService databaseFreezeService;
 
@@ -287,8 +290,8 @@ public class RepositoryManagerImpl
   @Guarded(by = STARTED)
   public Iterable<Repository> browseForBlobStore(String blobStoreId) {
     return stream(browse().spliterator(), true)
-            .filter(r -> blobStoreId.equals(r.getConfiguration().attributes("storage").get("blobStoreName")))
-            ::iterator;
+        .filter(r -> blobStoreId.equals(r.getConfiguration().attributes("storage").get("blobStoreName")))
+        ::iterator;
   }
 
   @Override
@@ -382,9 +385,9 @@ public class RepositoryManagerImpl
 
   private void removeRepositoryFromAllGroups(final Repository repositoryToRemove) throws Exception {
     for (Repository group : repositories.values()) {
-      Optional<GroupFacet> groupFacet = group.optionalFacet(GroupFacet.class);
-      if (groupFacet.isPresent() && groupFacet.get().member(repositoryToRemove)) {
-        removeRepositoryFromGroup(repositoryToRemove, group);
+        Optional<GroupFacet> groupFacet = group.optionalFacet(GroupFacet.class);
+        if (groupFacet.isPresent() && groupFacet.get().member(repositoryToRemove)) {
+          removeRepositoryFromGroup(repositoryToRemove, group);
       }
     }
   }
@@ -397,11 +400,11 @@ public class RepositoryManagerImpl
 
   private Stream<Object> blobstoreUsageStream(final String blobStoreName) {
     return stream(browse().spliterator(), false)
-            .map(Repository::getConfiguration)
-            .map(Configuration::getAttributes)
-            .map(a -> a.get("storage"))
-            .map(s -> s.get("blobStoreName"))
-            .filter(blobStoreName::equals);
+      .map(Repository::getConfiguration)
+      .map(Configuration::getAttributes)
+      .map(a -> a.get("storage"))
+      .map(s -> s.get("blobStoreName"))
+      .filter(blobStoreName::equals);
   }
 
   @Override
